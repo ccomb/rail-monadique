@@ -10,4 +10,6 @@ Huit monades : `Maybe`, `Either`, `List`, `Reader`, `Writer`, `State`, `IO` et `
 
 ## Utilisation
 
+Version en ligne : https://ccomb.github.io/rail-monadique/
+
 Tout tient dans `index.html` : pas de dépendance ni d'étape de build, seulement des polices Google Fonts. Ouvrez le fichier dans un navigateur, ou servez le dossier avec n'importe quel serveur statique.
