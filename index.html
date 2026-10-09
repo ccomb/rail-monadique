@@ -1,0 +1,1375 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Animation interactive des monades Maybe, Either, List, Reader, Writer, State, IO et Parser, en Haskell et en Elm.">
+<title>Le rail monadique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; }
+
+/* Layout : une scène animée (rail / boîtes) à côté du code Haskell qui s'allume en même temps */
+:root {
+  --bg: #F2F0F6;
+  --surface: #FFFFFF;
+  --ink: #1D1A2B;
+  --muted: #6A6480;
+  --line: #D3CDE0;
+  --accent: #5E5086;
+  --on-accent: #FFFFFF;
+  --layer: rgba(94, 80, 134, 0.08);
+  --ok: #2E7A58;
+  --warn: #B86B0A;
+  --warn-soft: rgba(184, 107, 10, 0.12);
+  --hl: rgba(94, 80, 134, 0.12);
+  --f-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-code: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14121B; --surface: #1E1B29; --ink: #ECE9F5; --muted: #9D97B2; --line: #363049;
+    --accent: #A998E3; --on-accent: #17141F; --layer: rgba(169, 152, 227, 0.10);
+    --ok: #5CC596; --warn: #F0A84A; --warn-soft: rgba(240, 168, 74, 0.14); --hl: rgba(169, 152, 227, 0.16);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14121B; --surface: #1E1B29; --ink: #ECE9F5; --muted: #9D97B2; --line: #363049;
+  --accent: #A998E3; --on-accent: #17141F; --layer: rgba(169, 152, 227, 0.10);
+  --ok: #5CC596; --warn: #F0A84A; --warn-soft: rgba(240, 168, 74, 0.14); --hl: rgba(169, 152, 227, 0.16);
+  color-scheme: dark;
+}
+
+[hidden] { display: none !important; }
+code, pre, pre *, svg text, .typeline, .typeline *, .seg button, .tab code, .caption code, .note { font-variant-ligatures: none !important; font-feature-settings: "liga" 0, "calt" 0, "dlig" 0 !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.5; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 48px; display: flex; flex-direction: column; gap: 20px; }
+
+header { display: flex; flex-direction: column; gap: 6px; }
+h1 { font-family: var(--f-display); font-stretch: 112%; font-weight: 800; font-size: clamp(1.9rem, 5vw, 2.8rem); line-height: 1.05; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+h1 code { font-family: var(--f-code); font-weight: 600; font-size: 0.82em; color: var(--accent); }
+.lede { margin: 0; color: var(--muted); max-width: 62ch; }
+
+.picker { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.picker .lab { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+.seg.big { flex-wrap: wrap; }
+.blurb { flex-basis: 100%; margin: 0; font-size: 15px; max-width: 70ch; }
+.blurb code { font-family: var(--f-code); font-size: .9em; color: var(--accent); }
+.seg.big button { font-size: 15px; padding: 11px 16px; }
+@media (max-width: 480px) { .seg.big button { font-size: 13.5px; padding: 10px 9px; } }
+.tab code { font-family: var(--f-code); font-size: 13.5px; }
+.tabdesc { margin: -8px 0 0; font-size: 15px; max-width: 70ch; }
+.tabdesc code { font-family: var(--f-code); font-size: .9em; color: var(--accent); }
+.codehead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; min-height: 34px; }
+.badge { font-size: 12px; color: var(--warn); border: 1px solid var(--warn); border-radius: 999px; padding: 3px 9px; }
+.syn { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.controls { max-width: 560px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab { font: 600 14px/1 var(--f-body); font-stretch: 90%; padding: 10px 14px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; display: flex; gap: 8px; align-items: center; }
+.tab .n { font-family: var(--f-code); color: var(--muted); }
+.tab[aria-selected="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.tab[aria-selected="true"] .n { color: var(--on-accent); opacity: .75; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 760px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+.stagecol { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.typeline { font-family: var(--f-code); font-size: 14px; color: var(--accent); min-height: 1.5em; overflow-x: auto; white-space: nowrap; }
+.typeline .k { color: var(--muted); }
+svg#stage { width: 100%; height: auto; display: block; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+svg text { font-family: var(--f-code); }
+
+.caption { margin: 0; min-height: 3em; max-width: 60ch; }
+.caption code { font-family: var(--f-code); font-size: .9em; color: var(--accent); }
+
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.ctl { font: 600 14px/1 var(--f-body); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.ctl.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); min-width: 92px; }
+.ctl:disabled { opacity: .35; cursor: default; }
+.dots { display: flex; gap: 6px; margin-left: auto; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.dot.on { background: var(--accent); }
+
+.opts { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; font-size: 14px; }
+.opts[hidden] { display: none !important; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { font: 600 13px/1 var(--f-code); padding: 8px 12px; background: var(--surface); color: var(--ink); border: 0; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.opts .lab { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+
+.codecol { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.codecol .lab { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+pre.code { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 0; overflow-x: auto; font: 13.5px/1.7 var(--f-code); }
+pre.code .ln { display: block; padding: 0 16px; border-left: 3px solid transparent; transition: background .3s, border-color .3s, opacity .3s; white-space: pre; min-height: 1.7em; }
+pre.code .ln.hl { background: var(--hl); border-left-color: var(--accent); }
+pre.code .ln.skip { opacity: .4; text-decoration: line-through; text-decoration-color: var(--warn); }
+pre.code .ty { color: var(--accent); }
+pre.code .cm { color: var(--muted); }
+pre.code .kw { font-weight: 600; }
+.note { font-size: 14px; color: var(--muted); margin: 0; }
+
+/* scène */
+.layer { fill: var(--layer); stroke: var(--accent); stroke-width: 1.5; }
+.layer-lab { fill: var(--accent); font-size: 12px; font-weight: 600; }
+.pill { fill: var(--surface); stroke: var(--ink); stroke-width: 1.5; }
+.pill.nothing { stroke: var(--warn); fill: var(--warn-soft); }
+.val { fill: var(--ink); font-size: 16px; font-weight: 600; }
+.val.nothing { fill: var(--warn); }
+.op { fill: var(--accent); font-size: 14px; font-weight: 600; }
+.anim { transition: transform .75s cubic-bezier(.55, 0, .2, 1), opacity .5s; transform-box: fill-box; transform-origin: center; }
+.fadein { animation: fadein .45s ease-out both; }
+@keyframes fadein { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
+.fadein { transform-box: fill-box; transform-origin: center; }
+
+.rail { stroke: var(--muted); stroke-width: 2.5; }
+.sleepers { stroke: var(--line); stroke-width: 12; stroke-dasharray: 2 9; }
+.siding { stroke: var(--warn); stroke-width: 2.5; opacity: .55; }
+.siding-sl { stroke: var(--warn); stroke-width: 12; stroke-dasharray: 2 9; opacity: .18; }
+.muted { fill: var(--muted); font-size: 11px; font-family: var(--f-body); }
+.station rect { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; transition: stroke .3s; }
+.station text { fill: var(--ink); font-size: 13px; font-weight: 600; }
+.station .post { stroke: var(--line); stroke-width: 2; }
+.station .light { fill: var(--line); transition: fill .3s; }
+.station { transition: opacity .4s; }
+.station.ok rect { stroke: var(--ok); } .station.ok .light { fill: var(--ok); }
+.station.fail rect { stroke: var(--warn); } .station.fail .light { fill: var(--warn); }
+.station.skip { opacity: .3; }
+.wagon { transition: transform .8s cubic-bezier(.55, 0, .2, 1), opacity .5s; }
+.wagon.tok rect { fill: var(--ok); }
+.gate rect { fill: var(--layer); stroke: transparent; stroke-width: 1.5; transition: stroke .3s; }
+.gate text { fill: var(--accent); font-size: 12px; font-weight: 600; }
+.gate.on rect { stroke: var(--accent); }
+.edge { fill: none; stroke: var(--muted); stroke-width: 2; stroke-linejoin: round; transition: opacity .5s; }
+.bracket { fill: none; stroke: var(--accent); stroke-width: 2; transition: opacity .5s; }
+.bracket-lab { fill: var(--accent); font-size: 12px; font-weight: 600; transition: opacity .5s; }
+.read { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 4 4; transition: opacity .4s; }
+.term { fill: var(--bg); stroke: var(--line); stroke-width: 1.5; }
+.term-title { fill: var(--muted); font-size: 11px; font-family: var(--f-body); }
+.term-line { fill: var(--ink); font-size: 13px; transition: opacity .4s; }
+.term-line.in { fill: var(--accent); font-weight: 600; }
+.cell rect { fill: var(--surface); stroke: var(--ink); stroke-width: 1.5; transition: fill .3s, stroke .3s; }
+.cell text { fill: var(--ink); font-size: 16px; font-weight: 600; transition: fill .3s; }
+.cell.used rect { fill: var(--layer); stroke: var(--line); }
+.cell.used text { fill: var(--muted); }
+.cell.bad rect { fill: var(--warn-soft); stroke: var(--warn); }
+.cell.bad text { fill: var(--warn); }
+.cursor { fill: var(--accent); transition: transform .6s cubic-bezier(.55, 0, .2, 1); }
+.lane-lab { fill: var(--muted); font-size: 11px; font-family: var(--f-body); }
+.wagon rect { fill: var(--accent); transition: fill .3s; }
+.wagon text { fill: var(--on-accent); font-size: 13px; font-weight: 600; }
+.wagon.fail rect { fill: var(--warn); }
+.wagon .wheel { fill: var(--ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  .anim, .wagon, .station, pre.code .ln { transition: none !important; }
+  .fadein { animation: none; }
+}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Le rail monadique</h1>
+    <p class="lede">Pourquoi <code style="font-family:var(--f-code);color:var(--accent)">&gt;&gt;=</code> existe, en trois temps, pour huit monades. Avec <code style="font-family:var(--f-code);color:var(--accent)">Maybe</code>, <code style="font-family:var(--f-code);color:var(--accent)">Either</code>, <code style="font-family:var(--f-code);color:var(--accent)">List</code>, <code style="font-family:var(--f-code);color:var(--accent)">Reader</code>, <code style="font-family:var(--f-code);color:var(--accent)">Writer</code>, <code style="font-family:var(--f-code);color:var(--accent)">State</code>, <code style="font-family:var(--f-code);color:var(--accent)">IO</code> ou <code style="font-family:var(--f-code);color:var(--accent)">Parser</code>, la mécanique est la même : seul le sens de « aplatir » change.</p>
+  </header>
+
+  <div class="picker">
+    <span class="lab">Monade</span>
+    <span class="seg big" id="kinds">
+      <button data-k="maybe">Maybe</button><button data-k="either">Either</button><button data-k="list">List</button><button data-k="reader">Reader</button><button data-k="writer">Writer</button><button data-k="state">State</button><button data-k="io">IO</button><button data-k="parser">Parser</button>
+    </span>
+    <p class="blurb" id="blurb" aria-live="polite"></p>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" data-act="0" id="tab0"><span class="n">1</span><code>fmap</code></button>
+    <button class="tab" role="tab" data-act="1" id="tab1"><span class="n">2</span><code>join</code></button>
+    <button class="tab" role="tab" data-act="2" id="tab2"><span class="n">3</span>Les deux enchaînés : <code>&gt;&gt;=</code></button>
+  </div>
+  <p class="tabdesc" id="tabdesc" aria-live="polite"></p>
+
+  <div class="controls">
+    <button class="ctl" id="prev" aria-label="Étape précédente">◀</button>
+    <button class="ctl primary" id="play">▶ Lecture</button>
+    <button class="ctl" id="next" aria-label="Étape suivante">▶</button>
+    <div class="dots" id="dots"></div>
+  </div>
+
+  <div class="grid">
+    <div class="stagecol">
+      <div class="typeline" id="typeline"></div>
+      <svg id="stage" viewBox="0 0 360 230" role="img" aria-label="Animation de la monade Maybe"></svg>
+      <p class="caption" id="caption" aria-live="polite"></p>
+      <div class="opts" id="opts" hidden>
+        <span class="lab" id="inputLab">Entrée</span>
+        <span class="seg" id="pinputs" hidden>
+          <button data-p="12+30">"12+30"</button><button data-p="12-30">"12-30"</button>
+        </span>
+        <span class="seg" id="inputs">
+          <button data-v="8">8</button><button data-v="6">6</button><button data-v="20">20</button>
+        </span>
+      </div>
+    </div>
+
+    <div class="codecol">
+      <div class="codehead">
+        <span class="syn">
+          <span class="seg" id="langs"><button data-l="hs">Haskell</button><button data-l="elm">Elm</button></span>
+          <span class="badge" id="badge" hidden>écrit à la main, pas dans elm/core</span>
+        </span>
+        <span class="syn" id="syn" hidden>
+          <span class="lab">Syntaxe</span>
+          <span class="seg" id="modes">
+            <button data-m="bind">&gt;&gt;=</button><button data-m="do">do</button>
+          </span>
+        </span>
+      </div>
+      <pre class="code" id="code"></pre>
+      <p class="note" id="note"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.getElementById("stage");
+  const $ = (id) => document.getElementById(id);
+  const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function el(tag, attrs, parent, text) {
+    const n = document.createElementNS(NS, tag);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    if (text != null) n.textContent = text;
+    if (parent) parent.appendChild(n);
+    return n;
+  }
+  const clear = () => { while (svg.firstChild) svg.removeChild(svg.firstChild); svg.dataset.scene = ""; };
+
+  /* ---------- code panel ---------- */
+  function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function colorize(line) {
+    const i = line.indexOf("--");
+    let code = i >= 0 ? line.slice(0, i) : line;
+    let cm = i >= 0 ? line.slice(i) : "";
+    code = esc(code)
+      .replace(/\b(do|where|instance|newtype|otherwise|if|then|else|case|of|let|in|type|alias)\b/g, '<span class="kw">$1</span>')
+      .replace(/\b([A-Z][A-Za-z]*)\b/g, '<span class="ty">$1</span>');
+    return code + (cm ? '<span class="cm">' + esc(cm) + "</span>" : "");
+  }
+  function setCode(lines, hl, skip) {
+    hl = hl || []; skip = skip || [];
+    $("code").innerHTML = lines.map((l, i) =>
+      '<span class="ln' + (hl.includes(i) ? " hl" : "") + (skip.includes(i) ? " skip" : "") + '">' + colorize(l) + "</span>"
+    ).join("");
+  }
+
+  let kind = "maybe", lang = "hs";
+  /* ---------- nested boxes as trees, animated by key (FLIP) ---------- */
+  const CX = 180, CY = 138;
+  const B = (k, lab, ...kids) => ({ k, lab, kids });
+  const P = (k, v, fail) => ({ k, v: String(v), fail: !!fail });
+
+  function measure(n) {
+    if (n.kids === undefined) { n.w = Math.max(34, n.v.length * 9.6 + 22); n.h = 32; return; }
+    n.kids.forEach(measure);
+    n.kw = n.kids.reduce((s, c) => s + c.w, 0) + Math.max(0, n.kids.length - 1) * 8;
+    n.w = Math.max(n.lab.length * 7.4 + 22, n.kw + 20, 44);
+    n.h = (n.kids.length ? Math.max(...n.kids.map((c) => c.h)) : 16) + 34;
+  }
+  function place(n, x, y, out) {
+    n.x = x; n.y = y; out[n.k] = n;
+    if (n.kids === undefined) return;
+    let cx = x + (n.w - n.kw) / 2;
+    n.kids.forEach((c) => { place(c, cx, y + 24 + (n.h - 34 - c.h) / 2, out); cx += c.w + 8; });
+  }
+  function layout(tree) {
+    const t = JSON.parse(JSON.stringify(tree)), out = {}, order = [];
+    measure(t); place(t, CX - t.w / 2, CY - t.h / 2, out);
+    (function walk(n) { order.push(n); (n.kids || []).forEach(walk); })(t);
+    return { map: out, order };
+  }
+
+  function drawNode(n, parent) {
+    if (n.kids === undefined) {
+      const g = el("g", { class: "anim" }, parent);
+      el("rect", { x: n.x, y: n.y, width: n.w, height: n.h, rx: 16, class: "pill" + (n.fail ? " nothing" : "") }, g);
+      el("text", { x: n.x + n.w / 2, y: n.y + n.h / 2 + 5.5, "text-anchor": "middle", class: "val" + (n.fail ? " nothing" : "") }, g, n.v);
+      return { parts: [g], kind: "pill" };
+    }
+    const r = el("rect", { x: n.x, y: n.y, width: n.w, height: n.h, rx: 10, class: "layer anim", "vector-effect": "non-scaling-stroke" }, parent);
+    r.style.transformBox = "view-box"; r.style.transformOrigin = "0 0";
+    const t = el("text", { x: n.x + 10, y: n.y + 17, class: "layer-lab anim" }, parent, n.lab);
+    return { parts: [r, t], kind: "box" };
+  }
+
+  function renderTree(tree, op, prevTree) {
+    clear();
+    if (op) el("text", { x: CX, y: 26, "text-anchor": "middle", class: "op fadein" }, svg, op);
+    const to = layout(tree);
+    const from = prevTree && !reduced ? layout(prevTree) : null;
+    const g = el("g", {}, svg);
+    const moves = [];
+    to.order.forEach((n) => {
+      const d = drawNode(n, g);
+      const f = from && from.map[n.k];
+      if (!from) return;
+      if (!f || (f.kids === undefined) !== (n.kids === undefined)) {
+        d.parts.forEach((p) => { p.style.transition = "none"; p.style.opacity = 0; moves.push([p, "fade"]); });
+        return;
+      }
+      if (d.kind === "box") {
+        const [r, t] = d.parts;
+        r.style.transition = "none"; t.style.transition = "none";
+        r.style.transform = `translate(${f.x}px, ${f.y}px) scale(${f.w / n.w}, ${f.h / n.h}) translate(${-n.x}px, ${-n.y}px)`;
+        t.style.transform = `translate(${f.x - n.x}px, ${f.y - n.y}px)`;
+        moves.push([r, "move"], [t, "move"]);
+      } else {
+        const p = d.parts[0];
+        p.style.transition = "none";
+        p.style.transform = `translate(${f.x + f.w / 2 - n.x - n.w / 2}px, ${f.y - n.y}px)`;
+        moves.push([p, "move"]);
+      }
+    });
+    if (from) {
+      from.order.forEach((f) => {
+        if (to.map[f.k] && (to.map[f.k].kids === undefined) === (f.kids === undefined)) return;
+        const d = drawNode(f, g);
+        d.parts.forEach((p) => moves.push([p, "ghost"]));
+      });
+      g.getBoundingClientRect();
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        moves.forEach(([p, how]) => {
+          p.style.transition = "";
+          if (how === "move") p.style.transform = "";
+          else if (how === "fade") p.style.opacity = 1;
+          else p.style.opacity = 0;
+        });
+      }));
+    }
+  }
+
+  /* ---------- acts 1 & 2, one script per monad ---------- */
+  const SA = "State · ";
+  const ACT1 = {
+    maybe: {
+      note: "it désigne le résultat précédent dans ghci.",
+      code: ["half :: Int -> Maybe Int", "half n | even n    = Just (n `div` 2)", "       | otherwise = Nothing", "",
+        "fmap half (Just 8)", "  -- Just (Just 4)", "fmap (fmap half) it", "  -- Just (Just (Just 2))"],
+      steps: [
+        { type: "Maybe Int", tree: B("a", "Just", P("p", 8)), op: "", hl: [0, 1, 2],
+          cap: "On part de <code>Just 8</code>. La fonction <code>half</code> divise par deux, mais échoue sur un nombre impair : elle renvoie une boîte <code>Maybe</code>." },
+        { type: "Maybe (Maybe Int)", tree: B("a", "Just", B("b", "Just", P("p", 4))), op: "↓ fmap half", hl: [4, 5],
+          cap: "<code>fmap</code> applique <code>half</code> à l'intérieur de la boîte. Comme <code>half</code> renvoie déjà une boîte, on obtient une boîte dans une boîte." },
+        { type: "Maybe (Maybe (Maybe Int))", tree: B("a", "Just", B("b", "Just", B("c", "Just", P("p", 2)))), op: "↓ fmap (fmap half)", hl: [6, 7],
+          cap: "Une étape de plus, une couche de plus. Il faut creuser de plus en plus profond : impossible d'enchaîner proprement." }
+      ]
+    },
+    list: {
+      note: "it désigne le résultat précédent dans ghci.",
+      code: ["voisins :: Int -> [Int]", "voisins n = [n - 1, n + 1]", "",
+        "fmap voisins [3]", "  -- [[2,4]]", "fmap (fmap voisins) it", "  -- [[[1,3],[3,5]]]"],
+      steps: [
+        { type: "[Int]", tree: B("a", "[ ]", P("p0", 3)), op: "", hl: [0, 1],
+          cap: "On part de la liste <code>[3]</code>. La fonction <code>voisins</code> renvoie plusieurs résultats possibles, donc une liste." },
+        { type: "[[Int]]", tree: B("a", "[ ]", B("b", "[ ]", P("p1", 2), P("p2", 4))), op: "↓ fmap voisins", hl: [3, 4],
+          cap: "<code>fmap</code> applique <code>voisins</code> à chaque élément. Chaque résultat est déjà une liste : on obtient une liste de listes." },
+        { type: "[[[Int]]]", tree: B("a", "[ ]", B("b", "[ ]", B("c", "[ ]", P("q1", 1), P("q2", 3)), B("d", "[ ]", P("q3", 3), P("q4", 5)))),
+          op: "↓ fmap (fmap voisins)", hl: [5, 6],
+          cap: "Encore une étape, encore un niveau. Les branches restent enfermées dans des sous-listes de plus en plus profondes." }
+      ]
+    },
+    state: {
+      note: "Ici la boîte n'est pas un conteneur : c'est une transition s -> (a, s) en attente. Le chiffre est la valeur qu'elle produira, l'étiquette ce qu'elle fera à l'état.",
+      code: ["double :: Int -> State Int Int", "double x = do modify (+1)", "              return (x * 2)", "",
+        "fmap double (pure 3)", "  -- State Int (State Int Int)", "fmap (fmap double) it", "  -- State Int (State Int (State Int Int))"],
+      steps: [
+        { type: "State Int Int", tree: B("a", SA + "id", P("p", 3)), op: "", hl: [0, 1, 2],
+          cap: "<code>pure 3</code> est une transition qui ne touche pas l'état (<code>id</code>) et produit 3. <code>double</code> ajoute 1 à l'état et double la valeur." },
+        { type: "State Int (State Int Int)", tree: B("a", SA + "id", B("b", SA + "+1", P("p", 6))), op: "↓ fmap double", hl: [4, 5],
+          cap: "<code>fmap double</code> range le résultat de <code>double</code>, lui-même une transition, à l'intérieur de la première. Deux transitions emboîtées, aucune n'est exécutée." },
+        { type: "State Int (State Int (State Int Int))", tree: B("a", SA + "id", B("b", SA + "+1", B("c", SA + "+1", P("p", 12)))),
+          op: "↓ fmap (fmap double)", hl: [6, 7],
+          cap: "Trois transitions en poupées russes. Pour connaître l'état final, il faudrait les dérouler une par une à la main." }
+      ]
+    }
+  };
+
+  ACT1.either = {
+    note: "Either e généralise Maybe : l'échec transporte une explication, ici un message de type String.",
+    code: ["halfE :: Int -> Either String Int", "halfE n | even n    = Right (n `div` 2)", "        | otherwise = Left (show n ++ \" impair\")", "",
+      "fmap halfE (Right 8)", "  -- Right (Right 4)", "fmap (fmap halfE) it", "  -- Right (Right (Right 2))"],
+    steps: [
+      { type: "Either String Int", tree: B("a", "Right", P("p", 8)), op: "", hl: [0, 1, 2],
+        cap: "On part de <code>Right 8</code>. <code>halfE</code> divise par deux, ou échoue avec <code>Left</code> et un message qui dit pourquoi." },
+      { type: "Either String (Either String Int)", tree: B("a", "Right", B("b", "Right", P("p", 4))), op: "↓ fmap halfE", hl: [4, 5],
+        cap: "Comme pour <code>Maybe</code> : <code>fmap</code> range la boîte renvoyée par <code>halfE</code> dans la boîte de départ." },
+      { type: "Either String (Either String (Either String Int))", tree: B("a", "Right", B("b", "Right", B("c", "Right", P("p", 2)))), op: "↓ fmap (fmap halfE)", hl: [6, 7],
+        cap: "Trois couches de <code>Right</code>. Et pour savoir si une étape a échoué, il faudrait fouiller chaque couche." }
+    ]
+  };
+  ACT1.writer = {
+    note: "Ici aussi la boîte est un calcul : une valeur accompagnée d'un journal. L'étiquette montre ce que chaque couche a écrit.",
+    code: ["moitie :: Int -> Writer [String] Int", "moitie n = do tell [show n ++ \"÷2\"]", "              return (n `div` 2)", "",
+      "fmap moitie (pure 8)", "  -- Writer [String] (Writer [String] Int)", "fmap (fmap moitie) it", "  -- Writer w (Writer w (Writer w Int))"],
+    steps: [
+      { type: "Writer [String] Int", tree: B("a", "Writer · []", P("p", 8)), op: "", hl: [0, 1, 2],
+        cap: "<code>pure 8</code> : la valeur 8 avec un journal vide. <code>moitie</code> divise par deux et note ce qu'elle a fait." },
+      { type: "Writer [String] (Writer [String] Int)", tree: B("a", "Writer · []", B("b", "Writer · [8÷2]", P("p", 4))), op: "↓ fmap moitie", hl: [4, 5],
+        cap: "<code>fmap moitie</code> range le résultat de <code>moitie</code>, avec son propre journal, à l'intérieur. Deux journaux séparés." },
+      { type: "Writer w (Writer w (Writer w Int))", tree: B("a", "Writer · []", B("b", "Writer · [8÷2]", B("c", "Writer · [4÷2]", P("p", 2)))),
+        op: "↓ fmap (fmap moitie)", hl: [6, 7],
+        cap: "Trois couches, trois journaux éparpillés. Pour lire l'historique complet, il faudrait les recoller à la main." }
+    ]
+  };
+
+  ACT1.reader = {
+    note: "La boîte Reader est une fonction r -> a qui attend son environnement. La pastille montre ce qu'elle produira en fonction de k.",
+    code: ["scale :: Int -> Reader Int Int", "scale x = asks (* x)     -- x · k", "",
+      "fmap scale (pure 3)", "  -- Reader Int (Reader Int Int)", "fmap (fmap scale) it", "  -- Reader r (Reader r (Reader r Int))"],
+    steps: [
+      { type: "Reader Int Int", tree: B("a", "Reader · ignore k", P("p", "3")), op: "", hl: [0, 1],
+        cap: "<code>pure 3</code> ignore l'environnement et produit 3. <code>scale</code> lit l'environnement <code>k</code> et multiplie par lui." },
+      { type: "Reader Int (Reader Int Int)", tree: B("a", "Reader · ignore k", B("b", "Reader · lit k", P("p", "3·k"))), op: "↓ fmap scale", hl: [3, 4],
+        cap: "<code>fmap scale</code> range une lecture de <code>k</code> dans la boîte. Rien n'est calculé : chaque couche attend qu'on lui donne <code>k</code>." },
+      { type: "Reader r (Reader r (Reader r Int))", tree: B("a", "Reader · ignore k", B("b", "Reader · lit k", B("c", "Reader · lit k", P("p", "3·k·k")))),
+        op: "↓ fmap (fmap scale)", hl: [5, 6],
+        cap: "Trois couches, et il faudrait fournir <code>k</code> à chacune séparément pour obtenir le résultat." }
+    ]
+  };
+
+  ACT1.io = {
+    note: "Une valeur IO est une recette, pas un résultat : la construire n'a aucun effet. Seul main est exécuté par le runtime.",
+    code: ["echo :: Int -> IO Int", "echo n = do print n", "            return (n * 2)", "",
+      "fmap echo readLn", "  -- IO (IO Int)", "fmap (fmap echo) it", "  -- IO (IO (IO Int))"],
+    steps: [
+      { type: "IO Int", tree: B("a", "IO · lire", P("p", "n")), op: "", hl: [0, 1, 2],
+        cap: "<code>readLn</code> est une recette : « lis un nombre ». La pastille montre ce qu'elle produira une fois exécutée, <code>n</code>." },
+      { type: "IO (IO Int)", tree: B("a", "IO · lire", B("b", "IO · afficher", P("p", "2n"))), op: "↓ fmap echo", hl: [4, 5],
+        cap: "<code>fmap echo</code> range la recette <code>echo n</code> dans la première, sans l'exécuter : une recette qui produit une recette." },
+      { type: "IO (IO (IO Int))", tree: B("a", "IO · lire", B("b", "IO · afficher", B("c", "IO · afficher", P("p", "4n")))), op: "↓ fmap (fmap echo)", hl: [6, 7],
+        cap: "Trois recettes emboîtées. Le runtime n'exécute que la couche extérieure : les affichages intérieurs n'auraient jamais lieu." }
+    ]
+  };
+  ACT1.parser = {
+    note: "Un parseur est une fonction String -> Maybe (a, String) : il consomme le début de l'entrée et rend le reste.",
+    code: ["nombre :: Parser Int", "suite  :: Int -> Parser Int", "suite a = do symbole '+'", "             b <- nombre", "             pure (a + b)", "",
+      "fmap suite nombre", "  -- Parser (Parser Int)", "fmap (fmap suite) it", "  -- Parser (Parser (Parser Int))"],
+    steps: [
+      { type: "Parser Int", tree: B("a", "Parser · lit 12", P("p", "12")), op: "", hl: [0, 1, 2, 3, 4],
+        cap: "<code>nombre</code> lit des chiffres au début de l'entrée. Sur <code>\"12+30\"</code>, il produit 12 et laisse <code>\"+30\"</code>." },
+      { type: "Parser (Parser Int)", tree: B("a", "Parser · lit 12", B("b", "Parser · lit +30", P("p", "42"))), op: "↓ fmap suite", hl: [6, 7],
+        cap: "<code>fmap suite</code> range le parseur <code>suite 12</code> à l'intérieur : un parseur qui produit un parseur. Le reste <code>\"+30\"</code> n'est donné à personne." },
+      { type: "Parser (Parser (Parser Int))", tree: B("a", "Parser · lit 12", B("b", "Parser · lit +30", B("c", "Parser · lit +…", P("p", "42+n")))),
+        op: "↓ fmap (fmap suite)", hl: [8, 9],
+        cap: "Encore une couche. Chaque parseur intérieur attend une entrée que personne ne lui transmet." }
+    ]
+  };
+
+  const ACT2 = {
+    maybe: {
+      note: "join n'existe que pour une monade : c'est l'ingrédient qui manque à fmap.",
+      code: ["join :: Maybe (Maybe a) -> Maybe a", "", "join (Just (Just 4))  -- Just 4", "join (Just Nothing)   -- Nothing", "", "m >>= f  =  join (fmap f m)"],
+      steps: [
+        { type: "Maybe (Maybe Int)", tree: B("a", "Just", B("b", "Just", P("p", 4))), op: "", hl: [0],
+          cap: "Deux couches du même contexte. <code>join</code> sait les fusionner en une seule." },
+        { type: "Maybe Int", tree: B("a", "Just", P("p", 4)), op: "↓ join", hl: [2],
+          cap: "<code>join</code> retire une couche : <code>Just (Just 4)</code> devient <code>Just 4</code>." },
+        { type: "Maybe (Maybe Int)", tree: B("a", "Just", P("n", "Nothing", true)), op: "", hl: [3],
+          cap: "Et si la couche intérieure est un échec ?" },
+        { type: "Maybe Int", tree: P("n", "Nothing", true), op: "↓ join", hl: [3],
+          cap: "<code>join (Just Nothing)</code> donne <code>Nothing</code> : l'échec intérieur remonte et contamine tout." },
+        { type: "(>>=) :: Maybe a -> (a -> Maybe b) -> Maybe b", tree: B("a", "Just", P("p", 4)), op: "fmap f  ⟶  join", hl: [5],
+          cap: "<code>&gt;&gt;=</code>, c'est <code>fmap</code> suivi de <code>join</code>. Une étape ajoute une couche puis l'enlève aussitôt : on peut enchaîner à l'infini." }
+      ]
+    },
+    list: {
+      note: "La liste vide joue le rôle de Nothing : List généralise Maybe à zéro, un ou plusieurs résultats.",
+      code: ["join :: [[a]] -> [a]", "join = concat", "", "join [[1,3],[3,5]]  -- [1,3,3,5]", "join [[2],[]]       -- [2]", "", "xs >>= f  =  join (fmap f xs)"],
+      steps: [
+        { type: "[[Int]]", tree: B("a", "[ ]", B("b", "[ ]", P("p1", 1), P("p2", 3)), B("c", "[ ]", P("p3", 3), P("p4", 5))), op: "", hl: [0, 1],
+          cap: "Une liste de listes. Pour les listes, <code>join</code> s'appelle <code>concat</code>." },
+        { type: "[Int]", tree: B("a", "[ ]", P("p1", 1), P("p2", 3), P("p3", 3), P("p4", 5)), op: "↓ join", hl: [3],
+          cap: "Les sous-listes s'ouvrent et leurs éléments se rangent à la suite : <code>[1,3,3,5]</code>." },
+        { type: "[[Int]]", tree: B("a", "[ ]", B("b", "[ ]", P("p", 2)), B("c", "[ ]")), op: "", hl: [4],
+          cap: "Et si une branche ne donne rien ? La liste vide, c'est l'échec version liste." },
+        { type: "[Int]", tree: B("a", "[ ]", P("p", 2)), op: "↓ join", hl: [4],
+          cap: "<code>join [[2],[]]</code> donne <code>[2]</code> : la branche vide disparaît sans bruit. Pas d'erreur, juste moins de résultats." },
+        { type: "(>>=) :: [a] -> (a -> [b]) -> [b]", tree: B("a", "[ ]", P("p1", 2), P("p2", 4)), op: "fmap f  ⟶  join", hl: [6],
+          cap: "<code>&gt;&gt;=</code>, c'est <code>fmap</code> puis <code>concat</code> : chaque étape produit une liste de listes et l'aplatit aussitôt." }
+      ]
+    },
+    state: {
+      note: "Pour State, aplatir c'est composer : join fait suivre l'état s' de la transition extérieure vers l'intérieure.",
+      code: ["join :: State s (State s a) -> State s a", "join mm = State $ \\s ->", "  let (m, s') = runState mm s", "  in  runState m s'", "", "m >>= f  =  join (fmap f m)"],
+      steps: [
+        { type: "State Int (State Int Int)", tree: B("a", SA + "id", B("b", SA + "+1", P("p", 6))), op: "", hl: [0],
+          cap: "Deux transitions emboîtées : l'extérieure ne change rien (<code>id</code>), l'intérieure ajoute 1." },
+        { type: "State Int Int", tree: B("a", SA + "+1", P("p", 6)), op: "↓ join", hl: [1, 2, 3],
+          cap: "<code>join</code> exécute l'extérieure, récupère l'état <code>s'</code> et le donne à l'intérieure. <code>id</code> puis <code>+1</code> : une seule transition <code>+1</code>." },
+        { type: "State Int (State Int Int)", tree: B("a", SA + "+1", B("b", SA + "+1", P("p", 12))), op: "", hl: [0],
+          cap: "Une étape plus loin : deux transitions <code>+1</code> emboîtées." },
+        { type: "State Int Int", tree: B("a", SA + "+2", P("p", 12)), op: "↓ join", hl: [1, 2, 3],
+          cap: "<code>+1</code> puis <code>+1</code> donne <code>+2</code>. Les changements d'état se composent en un seul." },
+        { type: "(>>=) :: State s a -> (a -> State s b) -> State s b", tree: B("a", SA + "+1", P("p", 6)), op: "fmap f  ⟶  join", hl: [5],
+          cap: "<code>&gt;&gt;=</code>, c'est <code>fmap</code> puis <code>join</code> : chaque étape ajoute une transition et la compose aussitôt avec la précédente." }
+      ]
+    }
+  };
+
+  ACT2.either = {
+    note: "Même forme que Maybe : seul Left change, il garde le message d'erreur au lieu de tout oublier.",
+    code: ["join :: Either e (Either e a) -> Either e a", "", "join (Right (Right 4))         -- Right 4", "join (Right (Left \"3 impair\"))  -- Left \"3 impair\"", "", "m >>= f  =  join (fmap f m)"],
+    steps: [
+      { type: "Either String (Either String Int)", tree: B("a", "Right", B("b", "Right", P("p", 4))), op: "", hl: [0],
+        cap: "Deux couches de <code>Right</code>." },
+      { type: "Either String Int", tree: B("a", "Right", P("p", 4)), op: "↓ join", hl: [2],
+        cap: "<code>join</code> en retire une : <code>Right (Right 4)</code> devient <code>Right 4</code>." },
+      { type: "Either String (Either String Int)", tree: B("a", "Right", P("n", 'Left "3 impair"', true)), op: "", hl: [3],
+        cap: "Cette fois, l'étape intérieure a échoué, avec une raison." },
+      { type: "Either String Int", tree: P("n", 'Left "3 impair"', true), op: "↓ join", hl: [3],
+        cap: "<code>join</code> fait remonter l'échec <em>et</em> son message : on sait où et pourquoi le calcul s'est arrêté." },
+      { type: "(>>=) :: Either e a -> (a -> Either e b) -> Either e b", tree: B("a", "Right", P("p", 4)), op: "fmap f  ⟶  join", hl: [5],
+        cap: "<code>&gt;&gt;=</code>, c'est <code>fmap</code> puis <code>join</code> : le premier <code>Left</code> rencontré arrête tout et devient le résultat." }
+    ]
+  };
+  ACT2.writer = {
+    note: "Pour Writer, aplatir c'est concaténer les journaux avec <>. Il suffit que w soit un Monoid.",
+    code: ["join :: Monoid w => Writer w (Writer w a) -> Writer w a", "join mm = writer (a, w1 <> w2)", "  where (m, w1) = runWriter mm", "        (a, w2) = runWriter m", "", "m >>= f  =  join (fmap f m)"],
+    steps: [
+      { type: "Writer [String] (Writer [String] Int)", tree: B("a", "Writer · []", B("b", "Writer · [8÷2]", P("p", 4))), op: "", hl: [0],
+        cap: "Deux couches, chacune avec son journal : vide dehors, <code>[\"8÷2\"]</code> dedans." },
+      { type: "Writer [String] Int", tree: B("a", "Writer · [8÷2]", P("p", 4)), op: "↓ join", hl: [1, 2, 3],
+        cap: "<code>join</code> garde la valeur et colle les journaux : <code>[] &lt;&gt; [\"8÷2\"]</code>." },
+      { type: "Writer [String] (Writer [String] Int)", tree: B("a", "Writer · [8÷2]", B("b", "Writer · [4÷2]", P("p", 2))), op: "", hl: [0],
+        cap: "Une étape plus loin : un journal dehors, un autre dedans." },
+      { type: "Writer [String] Int", tree: B("a", "Writer · [8÷2, 4÷2]", P("p", 2)), op: "↓ join", hl: [1, 2, 3],
+        cap: "Les deux journaux se suivent dans l'ordre des étapes : <code>[\"8÷2\", \"4÷2\"]</code>." },
+      { type: "(>>=) :: Writer w a -> (a -> Writer w b) -> Writer w b", tree: B("a", "Writer · [8÷2]", P("p", 4)), op: "fmap f  ⟶  join", hl: [5],
+        cap: "<code>&gt;&gt;=</code>, c'est <code>fmap</code> puis <code>join</code> : chaque étape ajoute ses lignes au bout du journal commun." }
+    ]
+  };
+
+  ACT2.reader = {
+    note: "Contrairement à State, join ne compose rien : il distribue le même r aux deux couches. Lire deux fois l'environnement revient à le lire une fois.",
+    code: ["join :: Reader r (Reader r a) -> Reader r a", "join mm = reader $ \\r ->", "  runReader (runReader mm r) r", "", "m >>= f  =  join (fmap f m)"],
+    steps: [
+      { type: "Reader Int (Reader Int Int)", tree: B("a", "Reader · ignore k", B("b", "Reader · lit k", P("p", "3·k"))), op: "", hl: [0],
+        cap: "Deux couches : l'extérieure ignore <code>k</code>, l'intérieure le lit." },
+      { type: "Reader Int Int", tree: B("a", "Reader · lit k", P("p", "3·k")), op: "↓ join", hl: [1, 2],
+        cap: "<code>join</code> donne le même <code>r</code> aux deux couches. Une seule boîte reste, et elle lit <code>k</code>." },
+      { type: "Reader Int (Reader Int Int)", tree: B("a", "Reader · lit k", B("b", "Reader · lit k", P("p", "3·k·k"))), op: "", hl: [0],
+        cap: "Une étape plus loin : les deux couches lisent <code>k</code>." },
+      { type: "Reader Int Int", tree: B("a", "Reader · lit k", P("p", "3·k·k")), op: "↓ join", hl: [1, 2],
+        cap: "Les deux lectures voient le même <code>k</code>, donc une seule lecture suffit. State aurait donné <code>+2</code>, Reader reste à « lit k »." },
+      { type: "(>>=) :: Reader r a -> (a -> Reader r b) -> Reader r b", tree: B("a", "Reader · lit k", P("p", "3·k")), op: "fmap f  ⟶  join", hl: [4],
+        cap: "<code>&gt;&gt;=</code>, c'est <code>fmap</code> puis <code>join</code> : chaque étape lit le même environnement que toutes les autres." }
+    ]
+  };
+
+  ACT2.io = {
+    note: "IO est la seule de ces monades dont on ne sort pas : il n'existe pas de runIO. C'est le runtime qui exécute main.",
+    code: ["join :: IO (IO a) -> IO a", "join mm = do", "  m <- mm      -- exécute la recette extérieure", "  m            -- puis celle qu'elle a produite", "", "m >>= f  =  join (fmap f m)"],
+    steps: [
+      { type: "IO (IO Int)", tree: B("a", "IO · lire", B("b", "IO · afficher", P("p", "2n"))), op: "", hl: [0],
+        cap: "Une recette qui produit une recette." },
+      { type: "IO Int", tree: B("a", "IO · lire, afficher", P("p", "2n")), op: "↓ join", hl: [1, 2, 3],
+        cap: "<code>join</code> en fait une seule recette : exécuter l'extérieure, puis celle qu'elle a produite. Les effets se suivent : lire, puis afficher." },
+      { type: "IO (IO Int)", tree: B("a", "IO · lire, afficher", B("b", "IO · afficher", P("p", "4n"))), op: "", hl: [0],
+        cap: "Une étape plus loin : un nouvel affichage en attente à l'intérieur." },
+      { type: "IO Int", tree: B("a", "IO · lire, afficher ×2", P("p", "4n")), op: "↓ join", hl: [1, 2, 3],
+        cap: "Les effets s'ajoutent bout à bout, dans l'ordre. State composait des transitions d'état, IO compose des actions sur le monde." },
+      { type: "(>>=) :: IO a -> (a -> IO b) -> IO b", tree: B("a", "IO · lire, afficher", P("p", "2n")), op: "fmap f  ⟶  join", hl: [5],
+        cap: "<code>&gt;&gt;=</code>, c'est <code>fmap</code> puis <code>join</code> : chaque étape ajoute ses effets à la suite des précédents, dans un ordre garanti." }
+    ]
+  };
+  ACT2.parser = {
+    note: "Parser combine deux monades déjà vues : State pour le reste de l'entrée, Maybe pour l'échec.",
+    code: ["join :: Parser (Parser a) -> Parser a", "join pp = Parser $ \\s ->", "  case runParser pp s of", "    Nothing     -> Nothing", "    Just (p, r) -> runParser p r", "", "m >>= f  =  join (fmap f m)"],
+    steps: [
+      { type: "Parser (Parser Int)", tree: B("a", "Parser · lit 12", B("b", "Parser · lit +30", P("p", "42"))), op: "", hl: [0],
+        cap: "Un parseur qui produit un parseur." },
+      { type: "Parser Int", tree: B("a", "Parser · lit 12+30", P("p", "42")), op: "↓ join", hl: [1, 2, 4],
+        cap: "<code>join</code> lance le parseur extérieur, puis donne le reste <code>\"+30\"</code> au parseur qu'il a produit. Une seule passe, de gauche à droite." },
+      { type: "Parser (Parser Int)", tree: B("a", "Parser · lit 12", B("b", "Parser · attend +", P("n", "échec", true))), op: "", hl: [0],
+        cap: "Sur <code>\"12-30\"</code>, le parseur intérieur attend un <code>+</code> et trouve un <code>-</code>." },
+      { type: "Parser Int", tree: P("n", "Nothing", true), op: "↓ join", hl: [2, 3],
+        cap: "<code>join</code> fait remonter l'échec : le parseur entier renvoie <code>Nothing</code>." },
+      { type: "(>>=) :: Parser a -> (a -> Parser b) -> Parser b", tree: B("a", "Parser · lit 12+30", P("p", "42")), op: "fmap f  ⟶  join", hl: [6],
+        cap: "<code>&gt;&gt;=</code>, c'est <code>fmap</code> puis <code>join</code> : chaque étape lit la suite de l'entrée, et le premier échec arrête tout." }
+    ]
+  };
+
+  const STDLIB = "Elm n'a pas de type classes : chaque type a sa propre fonction map (Maybe.map, Result.map, List.map).";
+  const HAND = "Pas dans la bibliothèque standard : on définit le type et sa fonction map à la main, en quelques lignes.";
+  const ELM1 = {
+    maybe: { note: STDLIB, hl: [[0, 1, 2], [4, 5], [6, 7]], ops: ["", "↓ Maybe.map half", "↓ Maybe.map (Maybe.map half)"],
+      code: ["half : Int -> Maybe Int", "half n =", "    if modBy 2 n == 0 then Just (n // 2) else Nothing", "",
+        "Just 8 |> Maybe.map half", "    -- Just (Just 4)", "    |> Maybe.map (Maybe.map half)", "    -- Just (Just (Just 2))"] },
+    either: { note: STDLIB, hl: [[0, 1, 2, 3, 4, 5], [7, 8], [9, 10]], ops: ["", "↓ Result.map halfE", "↓ Result.map (Result.map halfE)"],
+      types: ["Result String Int", "Result String (Result String Int)", "Result String (Result String (Result String Int))"],
+      code: ["halfE : Int -> Result String Int", "halfE n =", "    if modBy 2 n == 0 then", "        Ok (n // 2)", "    else", "        Err (String.fromInt n ++ \" impair\")", "",
+        "Ok 8 |> Result.map halfE", "    -- Ok (Ok 4)", "    |> Result.map (Result.map halfE)", "    -- Ok (Ok (Ok 2))"] },
+    list: { note: STDLIB, hl: [[0, 1], [3, 4], [5, 6]], ops: ["", "↓ List.map voisins", "↓ List.map (List.map voisins)"],
+      types: ["List Int", "List (List Int)", "List (List (List Int))"],
+      code: ["voisins : Int -> List Int", "voisins n = [ n - 1, n + 1 ]", "",
+        "[ 3 ] |> List.map voisins", "    -- [ [ 2, 4 ] ]", "    |> List.map (List.map voisins)", "    -- [ [ [ 1, 3 ], [ 3, 5 ] ] ]"] },
+    reader: { note: HAND, hl: [[0, 5, 6], [2, 3, 8, 9], [10]], ops: ["", "↓ map scale", "↓ map (map scale)"],
+      code: ["type alias Reader env a = env -> a", "", "map : (a -> b) -> Reader env a -> Reader env b", "map f m = \\env -> f (m env)", "",
+        "scale : Int -> Reader Int Int", "scale x = \\k -> x * k", "", "always 3 |> map scale", "    -- Reader Int (Reader Int Int)", "    |> map (map scale)"] },
+    writer: { note: HAND, hl: [[0, 5, 6], [2, 3, 8, 9], [10]], ops: ["", "↓ map moitie", "↓ map (map moitie)"],
+      types: ["Writer Int", "Writer (Writer Int)", "Writer (Writer (Writer Int))"],
+      code: ["type alias Writer a = ( a, List String )", "", "map : (a -> b) -> Writer a -> Writer b", "map f ( a, log ) = ( f a, log )", "",
+        "moitie : Int -> Writer Int", "moitie n = ( n // 2, [ String.fromInt n ++ \"÷2\" ] )", "", "( 8, [] ) |> map moitie", "    -- Writer (Writer Int)", "    |> map (map moitie)"] },
+    state: { note: HAND, hl: [[0, 5, 6], [2, 3, 8, 9], [10]], ops: ["", "↓ map double", "↓ map (map double)"],
+      code: ["type alias State s a = s -> ( a, s )", "", "map : (a -> b) -> State s a -> State s b", "map f m = \\s -> Tuple.mapFirst f (m s)", "",
+        "double : Int -> State Int Int", "double x = \\s -> ( x * 2, s + 1 )", "", "(\\s -> ( 3, s )) |> map double", "    -- State Int (State Int Int)", "    |> map (map double)"] }
+  };
+  ELM1.io = { note: "Task est l'IO d'Elm : une recette d'effets que seul le runtime exécute, via Task.perform.",
+    hl: [[0, 1, 2], [4, 5], [6, 7]], ops: ["", "↓ Task.map attendre", "↓ Task.map (Task.map attendre)"],
+    types: ["Task x Int", "Task x (Task x Int)", "Task x (Task x (Task x Int))"],
+    trees: [B("a", "Task · succeed", P("p", 3)), B("a", "Task · succeed", B("b", "Task · sleep", P("p", 6))),
+      B("a", "Task · succeed", B("b", "Task · sleep", B("c", "Task · sleep", P("p", 12))))],
+    caps: ["<code>Task.succeed 3</code> est une recette qui produit 3. <code>attendre</code> fait une pause de 100 ms puis double la valeur.",
+      "<code>Task.map attendre</code> range la recette <code>attendre 3</code> dans la première, sans l'exécuter : une tâche qui produit une tâche.",
+      "Trois tâches emboîtées. Le runtime n'exécuterait que la couche extérieure : les pauses intérieures n'auraient jamais lieu."],
+    code: ["attendre : Int -> Task x Int", "attendre n =", "    Process.sleep 100 |> Task.map (\\_ -> n * 2)", "",
+      "Task.succeed 3 |> Task.map attendre", "    -- Task x (Task x Int)", "    |> Task.map (Task.map attendre)", "    -- Task x (Task x (Task x Int))"] };
+  ELM1.parser = { note: "Parser vient du paquet elm/parser (import Parser exposing (..)), pas d'elm/core.",
+    hl: [[0, 1, 2], [4, 5], [6, 7]], ops: ["", "↓ map suite", "↓ map (map suite)"],
+    code: ["suite : Int -> Parser Int", "suite a =", "    symbol \"+\" |> andThen (\\_ -> int |> map (\\b -> a + b))", "",
+      "int |> map suite", "    -- Parser (Parser Int)", "    |> map (map suite)", "    -- Parser (Parser (Parser Int))"] };
+
+  const ELM2 = {
+    maybe: { note: "elm/core n'a pas de Maybe.join : on l'obtient avec Maybe.andThen identity.", hl: [[0, 1], [3], [4], [4], [6]],
+      ops: ["", "↓ join", "", "↓ join", "Maybe.map f  ⟶  join"],
+      types: [null, null, null, null, "Maybe.andThen : (a -> Maybe b) -> Maybe a -> Maybe b"],
+      code: ["join : Maybe (Maybe a) -> Maybe a", "join = Maybe.andThen identity", "", "join (Just (Just 4))  -- Just 4", "join (Just Nothing)   -- Nothing", "",
+        "Maybe.andThen f m  ==  join (Maybe.map f m)"] },
+    either: { note: "Même chose pour Result : join s'écrit Result.andThen identity.", hl: [[0, 1], [3], [4], [4], [6]],
+      ops: ["", "↓ join", "", "↓ join", "Result.map f  ⟶  join"],
+      types: ["Result String (Result String Int)", "Result String Int", "Result String (Result String Int)", "Result String Int", "Result.andThen : (a -> Result e b) -> Result e a -> Result e b"],
+      code: ["join : Result e (Result e a) -> Result e a", "join = Result.andThen identity", "", "join (Ok (Ok 4))           -- Ok 4", "join (Ok (Err \"3 impair\"))  -- Err \"3 impair\"", "",
+        "Result.andThen f r  ==  join (Result.map f r)"] },
+    list: { note: "Pour les listes, join existe déjà sous le nom List.concat.", hl: [[0], [2], [3], [3], [5]],
+      ops: ["", "↓ List.concat", "", "↓ List.concat", "List.map f  ⟶  List.concat"],
+      types: ["List (List Int)", "List Int", "List (List Int)", "List Int", "List.concatMap : (a -> List b) -> List a -> List b"],
+      code: ["List.concat : List (List a) -> List a", "", "List.concat [ [ 1, 3 ], [ 3, 5 ] ]  -- [ 1, 3, 3, 5 ]", "List.concat [ [ 2 ], [] ]          -- [ 2 ]", "",
+        "List.concatMap f xs  ==  List.concat (List.map f xs)"] },
+    reader: { note: "join distribue le même env aux deux couches : lire deux fois l'environnement revient à le lire une fois.", hl: [[0], [1], [0], [1], [3, 4]],
+      ops: ["", "↓ join", "", "↓ join", "map f  ⟶  join"],
+      types: [null, null, null, null, "andThen : (a -> Reader env b) -> Reader env a -> Reader env b"],
+      code: ["join : Reader env (Reader env a) -> Reader env a", "join mm = \\env -> (mm env) env", "",
+        "andThen : (a -> Reader env b) -> Reader env a -> Reader env b", "andThen f m = join (map f m)"] },
+    writer: { note: "join colle les deux journaux avec ++.", hl: [[0], [1], [0], [1], [3, 4]],
+      ops: ["", "↓ join", "", "↓ join", "map f  ⟶  join"],
+      types: ["Writer (Writer Int)", "Writer Int", "Writer (Writer Int)", "Writer Int", "andThen : (a -> Writer b) -> Writer a -> Writer b"],
+      code: ["join : Writer (Writer a) -> Writer a", "join ( ( a, log2 ), log1 ) = ( a, log1 ++ log2 )", "",
+        "andThen : (a -> Writer b) -> Writer a -> Writer b", "andThen f m = join (map f m)"] },
+    state: { note: "join fait suivre l'état s1 de la couche extérieure vers l'intérieure : les changements d'état se composent.", hl: [[0], [1, 2, 3, 4, 5], [0], [1, 2, 3, 4, 5], [7, 8]],
+      ops: ["", "↓ join", "", "↓ join", "map f  ⟶  join"],
+      types: [null, null, null, null, "andThen : (a -> State s b) -> State s a -> State s b"],
+      code: ["join : State s (State s a) -> State s a", "join mm s =", "    let", "        ( m, s1 ) = mm s", "    in", "    m s1", "",
+        "andThen : (a -> State s b) -> State s a -> State s b", "andThen f m = join (map f m)"] }
+  };
+
+  ELM2.io = { note: "Comme pour Maybe, elm/core n'a pas de Task.join : Task.andThen identity suffit.",
+    hl: [[0], [1], [0], [1], [3]], ops: ["", "↓ join", "", "↓ join", "Task.map f  ⟶  join"],
+    types: ["Task x (Task x Int)", "Task x Int", "Task x (Task x Int)", "Task x Int", "Task.andThen : (a -> Task x b) -> Task x a -> Task x b"],
+    trees: [B("a", "Task · succeed", B("b", "Task · sleep", P("p", 6))), B("a", "Task · succeed, sleep", P("p", 6)),
+      B("a", "Task · succeed, sleep", B("b", "Task · sleep", P("p", 12))), B("a", "Task · succeed, sleep ×2", P("p", 12)),
+      B("a", "Task · succeed, sleep", P("p", 6))],
+    caps: ["Une tâche qui produit une tâche.",
+      "<code>join</code> en fait une seule : exécuter l'extérieure, puis celle qu'elle a produite. Les effets se suivent.",
+      "Une étape plus loin : une nouvelle pause en attente à l'intérieur.",
+      "Les effets s'ajoutent bout à bout, dans l'ordre.",
+      "<code>Task.andThen</code>, c'est <code>Task.map</code> puis <code>join</code> : chaque étape ajoute ses effets à la suite, dans un ordre garanti."],
+    code: ["join : Task x (Task x a) -> Task x a", "join = Task.andThen identity", "", "Task.andThen f t  ==  join (Task.map f t)"] };
+  ELM2.parser = { note: "elm/parser fournit andThen, map et succeed. Le reste de l'entrée et les erreurs restent cachés dans le type Parser.",
+    hl: [[0], [1], [0], [1], [3]], ops: ["", "↓ join", "", "↓ join", "map f  ⟶  join"],
+    types: [null, null, null, null, "andThen : (a -> Parser b) -> Parser a -> Parser b"],
+    code: ["join : Parser (Parser a) -> Parser a", "join = andThen identity", "", "andThen f p  ==  join (map f p)"] };
+
+  const MAPN = { maybe: "Maybe.map", either: "Result.map", list: "List.map", reader: "map", writer: "map", state: "map", io: "Task.map", parser: "map" };
+  const BINDN = { maybe: "Maybe.andThen", either: "Result.andThen", list: "List.concatMap", reader: "andThen", writer: "andThen", state: "andThen", io: "Task.andThen", parser: "andThen" };
+  const PURE = { reader: (n) => `always ${n}`, writer: (n) => `( ${n}, [] )`, state: (n) => `\\s -> ( ${n}, s )` };
+  const elmEither = (t) => (lang === "elm" && kind === "either" ? t.replace(/\bRight\b/g, "Ok").replace(/\bLeft\b/g, "Err") : t);
+  function fixTree(t) {
+    if (!t || lang !== "elm" || (kind !== "either" && kind !== "parser")) return t;
+    const c = JSON.parse(JSON.stringify(t));
+    const fx = (x) => (kind === "parser" ? x.replace(/^Nothing$/, "Err …") : elmEither(x));
+    (function walk(n) { if (n.lab) n.lab = fx(n.lab); if (n.v) n.v = fx(n.v); (n.kids || []).forEach(walk); })(c);
+    return c;
+  }
+  function fixCap(c) {
+    if (lang !== "elm") return c;
+    c = c.replace(/\bfmap\b/g, MAPN[kind]).replace(/&gt;&gt;=/g, BINDN[kind]);
+    if (PURE[kind]) c = c.replace(/pure (\d+)/g, (_, n) => PURE[kind](n));
+    c = elmEither(c);
+    if (kind === "parser") c = c.replace(/<code>nombre<\/code>/g, "<code>int</code>").replace(/symbole '\+'/g, 'symbol "+"')
+      .replace(/<code>Nothing<\/code>/g, "une erreur, <code>Err</code>").replace(/Just \(42, ""\)/g, "Ok 42")
+      .replace(/<code>pure \(a \+ b\)<\/code>/g, "<code>succeed (a + b)</code>");
+    return c.replace(/<code>s'<\/code>/g, "<code>s1</code>").replace(/&lt;&gt;/g, "++").replace(/<code>r<\/code>/g, "<code>env</code>")
+      .replace(/<code>runReader \(…\) 2<\/code> donne/g, "Appliqué à 2, le pipeline donne")
+      .replace(/ par <code>runReader<\/code>/g, ", en appliquant le pipeline à 2")
+      .replace(/<code>runState \(…\) 0<\/code> donne/g, "Appliqué à 0, le pipeline donne")
+      .replace(/<code>runWriter<\/code> donne/g, "Le pipeline donne")
+      .replace(/<code>w1 \+\+ w2<\/code>/g, "<code>log1 ++ log2</code>")
+      .replace(/<code>modify<\/code>/g, "<code>s + 1</code>");
+  }
+
+  function treeAct(table, etable) {
+    return {
+      get note() { return lang === "elm" ? etable[kind].note : table[kind].note; },
+      get code() { return lang === "elm" ? etable[kind].code : table[kind].code; },
+      get steps() { return table[kind].steps; },
+      render(i, forward) {
+        const st = this.steps, s = st[i];
+        const E = lang === "elm" ? etable[kind] : null;
+        const tr = (k) => (E && E.trees ? E.trees[k] : fixTree(st[k].tree));
+        renderTree(tr(i), E ? E.ops[i] : s.op, forward && i > 0 ? tr(i - 1) : null);
+        if (!E) return s;
+        return { type: (E.types && E.types[i]) || s.type, hl: E.hl[i], cap: E.caps ? E.caps[i] : fixCap(s.cap) };
+      }
+    };
+  }
+  const act1 = treeAct(ACT1, ELM1), act2 = treeAct(ACT2, ELM2);
+
+  /* act 3 : the rail */
+  const XS = [100, 190, 280], MAIN = 70, SIDE = 178;
+  let input = 20, mode = "bind";
+  const M = () => (lang === "elm" ? "bind" : mode);
+  let wagon, wagonRect, wagonText, stationEls = [];
+
+  function half(n) { return n % 2 === 0 ? n / 2 : null; }
+  const RAIL = {
+    maybe: { fn: "half", ok: (n) => `Just ${n}`, bad: () => "Nothing", side: "voie de garage  ·  Nothing", T: "Maybe",
+      law: "Nothing &gt;&gt;= _ = Nothing", type: "(>>=) :: Maybe a -> (a -> Maybe b) -> Maybe b",
+      inst: ["instance Monad Maybe where", "  Nothing >>= _ = Nothing", "  Just x  >>= f = f x"] },
+    either: { fn: "halfE", ok: (n) => `Right ${n}`, bad: (n) => `Left "${n} impair"`, side: "voie de garage  ·  Left e", T: "Either",
+      law: "Left e &gt;&gt;= _ = Left e", type: "(>>=) :: Either e a -> (a -> Either e b) -> Either e b",
+      inst: ["instance Monad (Either e) where", "  Left e  >>= _ = Left e", "  Right x >>= f = f x"] }
+  };
+  RAIL.maybe.nIdx = RAIL.either.nIdx = 1; RAIL.maybe.jIdx = RAIL.either.jIdx = 2; RAIL.maybe.op = RAIL.either.op = "&gt;&gt;=";
+  const RAIL_ELM = {
+    maybe: Object.assign({}, RAIL.maybe, { law: "Nothing |&gt; Maybe.andThen f == Nothing", op: "Maybe.andThen",
+      type: "Maybe.andThen : (a -> Maybe b) -> Maybe a -> Maybe b", nIdx: 3, jIdx: 4,
+      inst: ["-- Maybe.andThen, dans elm/core", "andThen f m =", "    case m of", "        Nothing -> Nothing", "        Just x -> f x"] }),
+    either: Object.assign({}, RAIL.either, { ok: (n) => `Ok ${n}`, bad: (n) => `Err "${n} impair"`, side: "voie de garage  ·  Err e", T: "Result",
+      law: "Err e |&gt; Result.andThen f == Err e", op: "Result.andThen",
+      type: "Result.andThen : (a -> Result e b) -> Result e a -> Result e b", nIdx: 3, jIdx: 4,
+      inst: ["-- Result.andThen, dans elm/core", "andThen f r =", "    case r of", "        Err e -> Err e", "        Ok x -> f x"] })
+  };
+  const RR = () => (lang === "elm" ? RAIL_ELM : RAIL)[kind];
+  const isRail = () => kind === "maybe" || kind === "either";
+
+  function buildRail() {
+    clear();
+    el("line", { x1: 14, y1: MAIN + 6, x2: 346, y2: MAIN + 6, class: "sleepers" }, svg);
+    el("line", { x1: 14, y1: MAIN, x2: 346, y2: MAIN, class: "rail" }, svg);
+    el("line", { x1: 14, y1: MAIN + 12, x2: 346, y2: MAIN + 12, class: "rail" }, svg);
+    el("line", { x1: 140, y1: SIDE + 6, x2: 346, y2: SIDE + 6, class: "siding-sl" }, svg);
+    el("line", { x1: 140, y1: SIDE, x2: 346, y2: SIDE, class: "siding" }, svg);
+    el("line", { x1: 140, y1: SIDE + 12, x2: 346, y2: SIDE + 12, class: "siding" }, svg);
+    XS.forEach((x) => el("line", { x1: x, y1: MAIN + 12, x2: x + 40, y2: SIDE, class: "siding" }, svg));
+    el("rect", { x: 346, y: SIDE - 4, width: 6, height: 20, rx: 2, fill: "var(--warn)" }, svg);
+    el("text", { x: 150, y: SIDE + 36, class: "muted" }, svg, RR().side);
+    el("text", { x: 346, y: MAIN + 36, class: "muted", "text-anchor": "end" }, svg, "sortie");
+    el("text", { x: 14, y: MAIN + 36, class: "muted" }, svg, "entrée");
+
+    stationEls = XS.map((x, i) => {
+      const g = el("g", { class: "station" }, svg);
+      el("line", { x1: x, y1: 42, x2: x, y2: MAIN - 2, class: "post" }, g);
+      el("rect", { x: x - 36, y: 18, width: 72, height: 24, rx: 5 }, g);
+      el("text", { x: x - 6, y: 34.5, "text-anchor": "middle" }, g, RR().fn);
+      el("circle", { cx: x + 25, cy: 30, r: 4.5, class: "light" }, g);
+      return g;
+    });
+
+    wagon = el("g", { class: "wagon" }, svg);
+    wagonRect = el("rect", { x: -32, y: -16, width: 64, height: 26, rx: 6 }, wagon);
+    el("circle", { cx: -18, cy: 12, r: 4, class: "wheel" }, wagon);
+    el("circle", { cx: 18, cy: 12, r: 4, class: "wheel" }, wagon);
+    wagonText = el("text", { x: 0, y: 1.5, "text-anchor": "middle" }, wagon, "");
+    svg.dataset.scene = kind;
+  }
+
+  function setWagon(x, y, text, fail, instant) {
+    const w = Math.max(64, text.length * 8.4 + 22);
+    wagonRect.setAttribute("x", -w / 2); wagonRect.setAttribute("width", w);
+    wagonText.textContent = text;
+    wagon.classList.toggle("fail", !!fail);
+    if (instant) { wagon.style.transition = "none"; }
+    x = Math.min(Math.max(x, w / 2 + 4), 356 - w / 2);
+    wagon.style.transform = `translate(${x}px, ${y - 4}px)`;
+    if (instant) { wagon.getBoundingClientRect(); wagon.style.transition = ""; }
+  }
+
+  function railSteps() {
+    const R = RR(), out = [], st = ["", "", ""];
+    let cur = input;
+    const c = (t) => `<code>${t.replace(/"/g, "&quot;")}</code>`;
+    out.push({ x: 26, y: MAIN, text: R.ok(cur), fail: false, st: st.slice(), line: -1, bind: null, skip: [],
+      cap: `${c(R.ok(cur))} entre sur le rail. Chaque <code>${R.op}</code> est un aiguillage.` });
+    for (let i = 0; i < 3; i++) {
+      const r = half(cur);
+      if (r !== null) {
+        st[i] = "ok";
+        out.push({ x: XS[i], y: MAIN, text: R.ok(r), fail: false, st: st.slice(), line: i, bind: "just", skip: [],
+          cap: `<code>${R.op}</code> déballe ${cur}, appelle <code>${R.fn} ${cur}</code> qui renvoie ${c(R.ok(r))}. Le wagon continue.` });
+        cur = r;
+      } else {
+        const bad = R.bad(cur);
+        st[i] = "fail";
+        out.push({ x: XS[i], y: MAIN, text: bad, fail: true, st: st.slice(), line: i, bind: "just", skip: [],
+          cap: `<code>${R.fn} ${cur}</code> renvoie ${c(bad)} : ${cur} est impair, l'étape échoue.` });
+        out.push({ x: XS[i] + 40, y: SIDE, text: bad, fail: true, st: st.slice(), line: i, bind: null, skip: [],
+          cap: kind === "either" ? "L'aiguillage bascule le wagon sur la voie de garage, avec son message d'erreur à bord." : "L'aiguillage bascule le wagon sur la voie de garage." });
+        const rest = [];
+        for (let j = i + 1; j < 3; j++) { st[j] = "skip"; rest.push(j); }
+        out.push({ x: 318, y: SIDE, text: bad, fail: true, st: st.slice(), line: null, bind: rest.length ? "nothing" : null, skip: rest,
+          cap: rest.length
+            ? `${rest.length === 1 ? `Le <code>${R.fn}</code> restant n'est` : `Les <code>${R.fn}</code> restants ne sont`} jamais appelé${rest.length === 1 ? "" : "s"} : <code>${R.law}</code>. Résultat : ${c(bad)}.`
+            : `Plus rien à court-circuiter. Résultat : ${c(bad)}, sans aucun test d'erreur écrit à la main.` });
+        return out;
+      }
+    }
+    out.push({ x: 318, y: MAIN, text: R.ok(cur), fail: false, st: st.slice(), line: null, bind: null, skip: [],
+      cap: `Résultat : ${c(R.ok(cur))}. Trois étapes, et toujours une seule couche de <code>${R.T}</code>.` });
+    return out;
+  }
+
+  /* ---------- generic pieces engine (List, State) ---------- */
+  let pieces = {};
+  function makePiece(id, cls) {
+    const g = el("g", { class: "wagon " + (cls || "") }, svg);
+    const rect = el("rect", { x: -17, y: -13, width: 34, height: 22, rx: 5 }, g);
+    el("circle", { cx: -9, cy: 10, r: 3.2, class: "wheel" }, g);
+    el("circle", { cx: 9, cy: 10, r: 3.2, class: "wheel" }, g);
+    const text = el("text", { x: 0, y: 2.5, "text-anchor": "middle" }, g, "");
+    g.style.opacity = 0;
+    pieces[id] = { g, rect, text, vis: false };
+  }
+  function moveTo(p, x, y, instant) {
+    if (instant) p.g.style.transition = "none";
+    p.g.style.transform = `translate(${x}px, ${y}px)`;
+    if (instant) { p.g.getBoundingClientRect(); p.g.style.transition = ""; }
+  }
+  function setLabel(p, t) {
+    const w = Math.max(34, t.length * 8 + 16);
+    p.rect.setAttribute("x", -w / 2); p.rect.setAttribute("width", w);
+    p.text.textContent = t;
+  }
+  function applyPieces(s, fw) {
+    for (const id in pieces) {
+      const p = pieces[id], st = s.pieces[id];
+      if (!st) { p.g.style.opacity = 0; p.vis = false; continue; }
+      if (st.t) setLabel(p, st.t);
+      p.g.classList.toggle("fail", !!st.fail);
+      if (st.hide) {
+        if (p.vis && fw) moveTo(p, st.x, st.y, false);
+        p.g.style.opacity = 0; p.vis = false; continue;
+      }
+      if (!p.vis && fw && st.from) {
+        moveTo(p, st.from[0], st.from[1], true);
+        p.g.style.opacity = 0;
+        requestAnimationFrame(() => requestAnimationFrame(() => { moveTo(p, st.x, st.y, false); p.g.style.opacity = 1; }));
+      } else {
+        moveTo(p, st.x, st.y, !fw);
+        p.g.style.opacity = 1;
+      }
+      p.vis = true;
+    }
+    svg.querySelectorAll("[data-show]").forEach((n) => { n.style.opacity = (s.show || []).includes(n.dataset.show) ? 1 : 0; });
+    svg.querySelectorAll(".gate").forEach((n, k) => n.classList.toggle("on", s.gate === k));
+  }
+  function gate(x, label, y1, y2) {
+    const g = el("g", { class: "gate" }, svg);
+    el("rect", { x: x - 16, y: y1, width: 32, height: y2 - y1, rx: 8 }, g);
+    el("text", { x, y: y1 - 6, "text-anchor": "middle" }, g, label);
+  }
+
+  /* List : voisins n = [n-1, n+1] */
+  const G1 = 95, G2 = 205;
+  function buildList() {
+    clear(); pieces = {};
+    gate(G1, ">>= voisins", 26, 214);
+    gate(G2, ">>= voisins", 26, 214);
+    el("polyline", { points: "10,115 36,115", class: "edge" }, svg);
+    const E = (k, pts) => { const n = el("polyline", { points: pts, class: "edge", "data-show": k }, svg); n.style.opacity = 0; };
+    E("e1", `36,115 ${G1},115 150,72`); E("e2", `36,115 ${G1},115 150,158`);
+    E("e3", `150,72 ${G2},72 255,40`); E("e4", `150,72 ${G2},72 255,92`);
+    E("e5", `150,158 ${G2},158 255,138`); E("e6", `150,158 ${G2},158 255,190`);
+    const br = el("rect", { x: 298, y: 50, width: 48, height: 128, rx: 9, class: "bracket", "data-show": "br" }, svg); br.style.opacity = 0;
+    const bl = el("text", { x: 322, y: 198, "text-anchor": "middle", class: "bracket-lab", "data-show": "br" }, svg, "[1,3,3,5]"); bl.style.opacity = 0;
+    ["w0", "w1", "w2", "w3", "w4", "w5", "w6"].forEach((id) => makePiece(id));
+    svg.dataset.scene = "list";
+  }
+  function listSteps() {
+    return [
+      { pieces: { w0: { x: 36, y: 115, t: "3" } }, show: [], gate: null, pipe: -1, def: [], inst: [],
+        cap: "Un seul wagon au départ : la liste <code>[3]</code>." },
+      { pieces: { w0: { hide: true, x: G1, y: 115 }, w1: { x: 150, y: 72, t: "2", from: [G1, 115] }, w2: { x: 150, y: 158, t: "4", from: [G1, 115] } },
+        show: ["e1", "e2"], gate: 0, pipe: 0, def: [0, 1], inst: [1],
+        cap: "<code>voisins 3 = [2, 4]</code> : un wagon entre, deux en sortent. Chaque résultat repart sur sa propre voie." },
+      { pieces: { w1: { hide: true, x: G2, y: 72 }, w2: { hide: true, x: G2, y: 158 },
+          w3: { x: 255, y: 40, t: "1", from: [G2, 72] }, w4: { x: 255, y: 92, t: "3", from: [G2, 72] },
+          w5: { x: 255, y: 138, t: "3", from: [G2, 158] }, w6: { x: 255, y: 190, t: "5", from: [G2, 158] } },
+        show: ["e1", "e2", "e3", "e4", "e5", "e6"], gate: 1, pipe: 1, def: [0, 1], inst: [1],
+        cap: "Chaque wagon passe à son tour dans <code>voisins</code> : 2 donne <code>[1, 3]</code>, 4 donne <code>[3, 5]</code>. On explore toutes les branches à la fois." },
+      { pieces: { w3: { x: 322, y: 72, t: "1" }, w4: { x: 322, y: 102, t: "3" }, w5: { x: 322, y: 132, t: "3" }, w6: { x: 322, y: 162, t: "5" } },
+        show: ["e1", "e2", "e3", "e4", "e5", "e6", "br"], gate: null, pipe: null, def: [], inst: [1],
+        cap: "<code>concat</code> attelle les petits trains en une seule liste plate : <code>[1, 3, 3, 5]</code>, jamais <code>[[1, 3], [3, 5]]</code>. C'est le <code>join</code> des listes." }
+    ];
+  }
+
+  /* State : double x = modify (+1) >> return (x * 2) */
+  const SX = [100, 190, 280], VY = 70, SY = 168;
+  function buildState() {
+    clear(); pieces = {};
+    SX.forEach((x) => gate(x, "double", 28, 206));
+    [VY, SY].forEach((y, k) => {
+      el("line", { x1: 12, y1: y + 6, x2: 348, y2: y + 6, class: "sleepers" }, svg);
+      el("line", { x1: 12, y1: y, x2: 348, y2: y, class: "rail" }, svg);
+      el("line", { x1: 12, y1: y + 12, x2: 348, y2: y + 12, class: "rail" }, svg);
+      el("text", { x: 12, y: y + 30, class: "lane-lab" }, svg, k === 0 ? "valeur" : "état (caché)");
+    });
+    makePiece("v"); makePiece("s", "tok");
+    svg.dataset.scene = "state";
+  }
+  function stateSteps() {
+    const caps = [
+      "<code>&gt;&gt;=</code> lance <code>double 3</code> avec l'état courant : la valeur devient 6, <code>modify</code> fait passer l'état à 1.",
+      "La valeur 6 part vers le <code>double</code> suivant, et <code>&gt;&gt;=</code> lui transmet l'état 1 en coulisse : c'est le <code>s'</code> de la définition.",
+      "Troisième étape : 24 en haut, 3 en bas. Personne n'a écrit le moindre passage d'état à la main."
+    ];
+    const out = [{ pieces: { v: { x: 32, y: VY, t: "3" }, s: { x: 32, y: SY, t: "s=0" } }, gate: null, pipe: -1, def: [], inst: [],
+      cap: "Deux voies : en haut la valeur 3, en bas l'état, un compteur à 0. Le pipeline ne mentionne jamais l'état." }];
+    let v = 3;
+    SX.forEach((x, i) => {
+      v *= 2;
+      out.push({ pieces: { v: { x, y: VY, t: String(v) }, s: { x, y: SY, t: `s=${i + 1}` } }, gate: i, pipe: i, def: [2, 3], inst: [2, 3], cap: caps[i] });
+    });
+    out.push({ pieces: { v: { x: 326, y: VY, t: "24" }, s: { x: 326, y: SY, t: "s=3" } }, gate: null, pipe: null, def: [], inst: [1],
+      cap: "<code>runState (…) 0</code> donne <code>(24, 3)</code> : la valeur et l'état final. L'état a voyagé à côté du wagon, porté par <code>&gt;&gt;=</code>." });
+    return out;
+  }
+
+  /* Writer : moitie n = tell [show n ++ "÷2"] >> return (n `div` 2) */
+  function buildWriter() {
+    clear(); pieces = {};
+    SX.forEach((x) => gate(x, "moitie", 28, 206));
+    [VY, SY].forEach((y, k) => {
+      if (k === 0) {
+        el("line", { x1: 12, y1: y + 6, x2: 348, y2: y + 6, class: "sleepers" }, svg);
+        el("line", { x1: 12, y1: y, x2: 348, y2: y, class: "rail" }, svg);
+        el("line", { x1: 12, y1: y + 12, x2: 348, y2: y + 12, class: "rail" }, svg);
+      } else {
+        el("line", { x1: 12, y1: y + 14, x2: 348, y2: y + 14, class: "edge" }, svg);
+      }
+      el("text", { x: 12, y: y + 30, class: "lane-lab" }, svg, k === 0 ? "valeur" : "journal");
+    });
+    makePiece("v"); ["l0", "l1", "l2"].forEach((id) => makePiece(id, "tok"));
+    svg.dataset.scene = "writer";
+  }
+  function writerSteps() {
+    const caps = [
+      "<code>moitie 8</code> donne 4 et écrit <code>\"8÷2\"</code>. La ligne tombe dans le journal.",
+      "<code>&gt;&gt;=</code> passe 4 à l'étape suivante et colle sa ligne <code>\"4÷2\"</code> au bout du journal : c'est le <code>w1 &lt;&gt; w2</code>.",
+      "Troisième ligne. Le journal grandit d'un côté, la valeur avance de l'autre, et aucune étape ne voit les lignes des autres."
+    ];
+    const out = [{ pieces: { v: { x: 32, y: VY, t: "8" } }, gate: null, pipe: -1, def: [], inst: [],
+      cap: "En haut la valeur 8, en bas un journal vide. Le pipeline ne manipule jamais le journal directement." }];
+    let v = 8; const logs = {};
+    SX.forEach((x, i) => {
+      logs["l" + i] = { x, y: SY, t: `${v}÷2`, from: [x, VY] };
+      v /= 2;
+      const ps = { v: { x, y: VY, t: String(v) } };
+      for (const k in logs) ps[k] = { x: logs[k].x, y: logs[k].y, t: logs[k].t, from: logs[k].from };
+      out.push({ pieces: ps, gate: i, pipe: i, def: [2, 3], inst: [1, 2, 3], cap: caps[i] });
+    });
+    const ps = { v: { x: 326, y: VY, t: "1" } };
+    for (const k in logs) ps[k] = { x: logs[k].x, y: logs[k].y, t: logs[k].t };
+    out.push({ pieces: ps, gate: null, pipe: null, def: [], inst: [1],
+      cap: "<code>runWriter</code> donne <code>(1, [\"8÷2\", \"4÷2\", \"2÷2\"])</code> : la valeur et le journal complet, dans l'ordre des étapes." });
+    return out;
+  }
+
+  /* Reader : scale x = asks (* x) */
+  function buildReader() {
+    clear(); pieces = {};
+    SX.forEach((x) => gate(x, "scale", 28, 206));
+    el("line", { x1: 12, y1: VY + 6, x2: 348, y2: VY + 6, class: "sleepers" }, svg);
+    el("line", { x1: 12, y1: VY, x2: 348, y2: VY, class: "rail" }, svg);
+    el("line", { x1: 12, y1: VY + 12, x2: 348, y2: VY + 12, class: "rail" }, svg);
+    el("text", { x: 12, y: VY + 30, class: "lane-lab" }, svg, "valeur");
+    el("line", { x1: 60, y1: SY, x2: 348, y2: SY, class: "edge" }, svg);
+    el("text", { x: 12, y: SY + 30, class: "lane-lab" }, svg, "environnement (lecture seule)");
+    SX.forEach((x, i) => { const n = el("line", { x1: x, y1: SY - 4, x2: x, y2: VY + 22, class: "read", "data-show": "r" + i }, svg); n.style.opacity = 0; });
+    makePiece("v"); makePiece("e", "tok");
+    svg.dataset.scene = "reader";
+  }
+  function readerSteps() {
+    const caps = [
+      "<code>scale 3</code> lit <code>k</code> et donne 6. L'environnement n'a pas bougé.",
+      "<code>&gt;&gt;=</code> donne à l'étape suivante la valeur 6 et le même <code>r</code> : c'est le <code>r</code> répété dans la définition.",
+      "Troisième lecture du même <code>k</code>. Personne n'a passé <code>k</code> en argument."
+    ];
+    const E = { x: 36, y: SY, t: "k=2" };
+    const out = [{ pieces: { v: { x: 32, y: VY, t: "3" }, e: E }, show: [], gate: null, pipe: -1, def: [], inst: [],
+      cap: "En haut la valeur 3. En bas l'environnement <code>k = 2</code>, fourni une seule fois au départ par <code>runReader</code>." }];
+    let v = 3;
+    SX.forEach((x, i) => {
+      v *= 2;
+      out.push({ pieces: { v: { x, y: VY, t: String(v) }, e: E }, show: ["r" + i], gate: i, pipe: i, def: [1], inst: [1, 2], cap: caps[i] });
+    });
+    out.push({ pieces: { v: { x: 326, y: VY, t: "24" }, e: E }, show: ["r0", "r1", "r2"], gate: null, pipe: null, def: [], inst: [1],
+      cap: "<code>runReader (…) 2</code> donne 24. Avec un autre environnement, le même pipeline donnerait un autre résultat, sans changer une ligne." });
+    return out;
+  }
+
+  const KIND = {
+    io: { type: "(>>=) :: IO a -> (a -> IO b) -> IO b", offDo: 1,
+      note: "IO se comporte comme State, avec le monde entier comme état. GHC le définit d'ailleurs ainsi, avec un état State# RealWorld.",
+      pipe: () => M() === "bind" ? ["readLn", "  >>= echo", "  >>= echo", "  >>= echo"] : ["do n <- readLn", "   a <- echo n", "   b <- echo a", "   echo b"],
+      def: ["echo :: Int -> IO Int", "echo n = do", "  print n", "  return (n * 2)"],
+      inst: ["-- primitif ; modèle mental : IO a ≈ Monde -> (a, Monde)", "m >>= f = \\monde ->", "  let (a, monde') = m monde", "  in  f a monde'"] },
+    parser: { type: "(>>=) :: Parser a -> (a -> Parser b) -> Parser b", off: 0,
+      note: "Parser, c'est State (le reste de l'entrée) combiné avec Maybe (l'échec). En pratique, on utilise une bibliothèque comme megaparsec.",
+      pipe: () => M() === "bind" ? ["nombre      >>= \\a ->", "symbole '+' >>= \\_ ->", "nombre      >>= \\b ->", "pure (a + b)"] : ["do a <- nombre", "   _ <- symbole '+'", "   b <- nombre", "   pure (a + b)"],
+      def: ["newtype Parser a = Parser", "  { runParser :: String -> Maybe (a, String) }"],
+      inst: ["instance Monad Parser where", "  Parser p >>= f = Parser $ \\s ->", "    case p s of", "      Nothing     -> Nothing", "      Just (a, r) -> runParser (f a) r"] },
+    reader: {
+      type: "(>>=) :: Reader r a -> (a -> Reader r b) -> Reader r b",
+      note: "Comme pour State, l'environnement voyage hors du pipeline. Mais il est en lecture seule : chaque étape lit le même k, aucune ne peut le changer.",
+      pipe: () => M() === "bind" ? ["pure 3", "  >>= scale", "  >>= scale", "  >>= scale"] : ["do a <- scale 3", "   b <- scale a", "   scale b"],
+      def: ["scale :: Int -> Reader Int Int", "scale x = asks (* x)"],
+      inst: ["instance Monad (Reader r) where", "  m >>= f = reader $ \\r ->", "    runReader (f (runReader m r)) r"]
+    },
+    writer: {
+      type: "(>>=) :: Writer w a -> (a -> Writer w b) -> Writer w b",
+      note: "Writer ressemble à State, mais à sens unique : chaque étape peut écrire dans le journal, aucune ne peut le lire.",
+      pipe: () => M() === "bind" ? ["pure 8", "  >>= moitie", "  >>= moitie", "  >>= moitie"] : ["do a <- moitie 8", "   b <- moitie a", "   moitie b"],
+      def: ["moitie :: Int -> Writer [String] Int", "moitie n = do", "  tell [show n ++ \"÷2\"]", "  return (n `div` 2)"],
+      inst: ["instance Monoid w => Monad (Writer w) where", "  m >>= f = writer (b, w1 <> w2)", "    where (a, w1) = runWriter m", "          (b, w2) = runWriter (f a)"]
+    },
+    list: {
+      type: "(>>=) :: [a] -> (a -> [b]) -> [b]",
+      note: "Pour les listes, l'échec, c'est la liste vide : si voisins renvoyait [], le wagon disparaîtrait de la voie. Et concat aplatit à chaque >>=, pas seulement à la fin.",
+      pipe: () => M() === "bind" ? ["[3]", "  >>= voisins", "  >>= voisins"] : ["do a <- voisins 3", "   voisins a"],
+      def: ["voisins :: Int -> [Int]", "voisins n = [n - 1, n + 1]"],
+      inst: ["instance Monad [] where", "  xs >>= f = concat (map f xs)"]
+    },
+    state: {
+      type: "(>>=) :: State s a -> (a -> State s b) -> State s b",
+      note: "State s a enveloppe une fonction s -> (a, s). >>= branche ces fonctions bout à bout et fait suivre l'état d'une étape à la suivante.",
+      pipe: () => M() === "bind" ? ["pure 3", "  >>= double", "  >>= double", "  >>= double"] : ["do a <- double 3", "   b <- double a", "   double b"],
+      def: ["double :: Int -> State Int Int", "double x = do", "  modify (+1)", "  return (x * 2)"],
+      inst: ["instance Monad (State s) where", "  m >>= f = State $ \\s ->", "    let (a, s') = runState m s", "    in  runState (f a) s'"]
+    }
+  };
+
+  /* IO : echo n = print n >> return (n * 2) ; Elm : Task avec Process.sleep */
+  const IO_LINES = () => (lang === "elm" ? ["succeed 3", "sleep 100 ms", "sleep 100 ms", "sleep 100 ms"] : ["> 3", "3", "6", "12"]);
+  function buildIO() {
+    clear(); pieces = {};
+    SX.forEach((x) => gate(x, lang === "elm" ? "attendre" : "echo", 28, 112));
+    el("line", { x1: 12, y1: VY + 6, x2: 348, y2: VY + 6, class: "sleepers" }, svg);
+    el("line", { x1: 12, y1: VY, x2: 348, y2: VY, class: "rail" }, svg);
+    el("line", { x1: 12, y1: VY + 12, x2: 348, y2: VY + 12, class: "rail" }, svg);
+    el("text", { x: 12, y: VY + 30, class: "lane-lab" }, svg, "valeur");
+    el("rect", { x: 12, y: 126, width: 336, height: 96, rx: 8, class: "term" }, svg);
+    el("text", { x: 340, y: 142, "text-anchor": "end", class: "term-title" }, svg, lang === "elm" ? "effets exécutés par le runtime" : "console");
+    IO_LINES().forEach((t, k) => {
+      const n = el("text", { x: 26, y: 148 + k * 19, class: "term-line" + (k === 0 && lang !== "elm" ? " in" : ""), "data-show": "c" + k }, svg, t);
+      n.style.opacity = 0;
+    });
+    makePiece("v");
+    svg.dataset.scene = "io";
+  }
+  function ioSteps() {
+    const elm = lang === "elm";
+    const caps = elm ? [
+      "Ce pipeline n'est qu'une description : rien ne se passe tant qu'on ne le confie pas au runtime avec <code>Task.perform</code>.",
+      "Le runtime démarre la tâche : <code>Task.succeed 3</code> produit 3, sans effet.",
+      "<code>attendre 3</code> met le programme en pause 100 ms, puis renvoie 6. La pause est un vrai effet, exécuté par le runtime.",
+      "<code>Task.andThen</code> garantit l'ordre : la deuxième pause ne commence qu'après la première.",
+      "Troisième pause, puis 24.",
+      "<code>Task.perform</code> renvoie 24 au programme sous forme de message. Les effets ont eu lieu dans l'ordre, et le code Elm n'en a exécuté aucun lui-même."
+    ] : [
+      "<code>main</code> n'est qu'une recette : rien ne s'est encore passé. C'est le runtime qui va l'exécuter.",
+      "Le runtime exécute <code>readLn</code> : l'utilisateur tape 3. L'effet a lieu dans le monde, hors du programme.",
+      "<code>echo 3</code> affiche 3 dans la console et renvoie 6.",
+      "<code>&gt;&gt;=</code> garantit l'ordre : <code>echo 6</code> ne peut pas commencer avant que <code>echo 3</code> ait fini. Le monde passe d'une étape à l'autre, comme l'état dans State.",
+      "Troisième effet. Chaque action voit le monde laissé par la précédente.",
+      "Le programme produit 24, et la console garde la trace des effets, dans l'ordre. Contrairement au journal de Writer, on ne peut ni relire ni annuler ces effets : ils ont eu lieu."
+    ];
+    const out = [{ pieces: {}, show: [], gate: null, pipe: null, def: [], inst: [], cap: caps[0] },
+      { pieces: { v: { x: 32, y: VY, t: "3" } }, show: ["c0"], gate: null, pipe: -1, def: [], inst: [], cap: caps[1] }];
+    let v = 3;
+    SX.forEach((x, i) => {
+      v *= 2;
+      const show = []; for (let k = 0; k <= i + 1; k++) show.push("c" + k);
+      out.push({ pieces: { v: { x, y: VY, t: String(v) } }, show, gate: i, pipe: i, def: [2, 3], inst: [1, 2, 3], cap: caps[i + 2] });
+    });
+    out.push({ pieces: { v: { x: 326, y: VY, t: "24" } }, show: ["c0", "c1", "c2", "c3"], gate: null, pipe: null, def: [], inst: [1], cap: caps[5] });
+    return out;
+  }
+
+  /* Parser : nombre, symbole '+', nombre sur "12+30" ou "12-30" */
+  let pinput = "12+30";
+  const CELL0 = 116, CW = 28, CY0 = 30;
+  const cellX = (k) => CELL0 + k * CW + CW / 2;
+  function buildParser() {
+    clear(); pieces = {};
+    el("text", { x: 12, y: CY0 + 20, class: "lane-lab" }, svg, "entrée");
+    el("text", { x: 12, y: 116, class: "lane-lab" }, svg, "valeurs lues");
+    el("text", { x: 12, y: 186, class: "lane-lab" }, svg, "résultat");
+    pinput.split("").forEach((ch, k) => {
+      const g = el("g", { class: "cell", "data-cell": k }, svg);
+      el("rect", { x: CELL0 + k * CW, y: CY0, width: CW - 3, height: 28, rx: 4 }, g);
+      el("text", { x: cellX(k) - 1.5, y: CY0 + 20, "text-anchor": "middle" }, g, ch);
+    });
+    el("polygon", { points: `${CELL0 - 1},${CY0 + 34} ${CELL0 + 6},${CY0 + 44} ${CELL0 - 8},${CY0 + 44}`, class: "cursor", id: "pcur" }, svg);
+    el("line", { x1: 12, y1: 146, x2: 348, y2: 146, class: "edge" }, svg).style.opacity = .35;
+    ["p0", "p1", "p2", "res"].forEach((id) => makePiece(id));
+    svg.dataset.scene = "parser";
+  }
+  function parserSteps() {
+    const elm = lang === "elm", ok = pinput[2] === "+";
+    const g0 = (cellX(0) + cellX(1)) / 2, g1 = cellX(2), g2 = (cellX(3) + cellX(4)) / 2, RY = 112, ZY = 182;
+    const P0 = { x: g0, y: RY, t: "12", from: [g0, CY0 + 14] };
+    const P1 = { x: g1, y: RY, t: elm ? "()" : "'+'", from: [g1, CY0 + 14] };
+    const P2 = { x: g2, y: RY, t: "30", from: [g2, CY0 + 14] };
+    const out = [{ pieces: {}, used: 0, pipe: null, def: [0, 1], inst: [], edef: [0, 1], einst: [],
+      cap: "Un parseur est une fonction : il reçoit le reste de l'entrée, et renvoie peut-être une valeur avec ce qui reste à lire." }];
+    out.push({ pieces: { p0: P0 }, used: 2, pipe: 0, def: [], inst: [1, 2, 4], edef: [], einst: [1],
+      cap: "<code>nombre</code> lit les chiffres <code>12</code> et rend le reste, <code>\"" + pinput.slice(2) + "\"</code>. <code>&gt;&gt;=</code> passe 12 à la suite sous le nom <code>a</code>." });
+    if (!ok) {
+      const bad = { x: 180, y: ZY, t: elm ? "Err …" : "Nothing", fail: true, from: [g1, CY0 + 14] };
+      out.push({ pieces: { p0: P0, res: bad }, used: 2, bad: 2, pipe: 1, def: [], inst: [1, 2, 3], edef: [], einst: [1],
+        cap: "<code>symbole '+'</code> trouve un <code>-</code> : échec. Le parseur renvoie <code>Nothing</code>." });
+      out.push({ pieces: { p0: P0, res: Object.assign({}, bad, { from: null }) }, used: 2, bad: 2, pipe: null, skip: [2, 3], def: [], inst: [3], edef: [], einst: [1],
+        cap: "Les étapes suivantes ne sont jamais lancées : comme avec Maybe, le premier échec arrête tout. La position de l'échec, elle, est connue." });
+      return out;
+    }
+    out.push({ pieces: { p0: P0, p1: P1 }, used: 3, pipe: 1, def: [], inst: [1, 2, 4], edef: [], einst: [1],
+      cap: "<code>symbole '+'</code> consomme le <code>+</code>. Le reste à lire voyage d'une étape à l'autre, comme l'état dans State." });
+    out.push({ pieces: { p0: P0, p1: P1, p2: P2 }, used: 5, pipe: 2, def: [], inst: [1, 2, 4], edef: [], einst: [1],
+      cap: "<code>nombre</code> lit <code>30</code>. Il ne reste rien à lire." });
+    out.push({ pieces: { p0: P0, p1: P1, p2: P2, res: { x: 180, y: ZY, t: elm ? "Ok 42" : "Just (42, \"\")" } }, used: 5, pipe: 3, def: [], inst: [], edef: [], einst: [],
+      cap: "<code>pure (a + b)</code> produit 42 sans rien consommer. Résultat : <code>Just (42, \"\")</code>." });
+    return out;
+  }
+  function applyParser(s) {
+    svg.querySelectorAll("[data-cell]").forEach((g) => {
+      const k = +g.dataset.cell;
+      g.setAttribute("class", "cell" + (k === s.bad ? " bad" : k < s.used ? " used" : ""));
+    });
+    const c = svg.querySelector("#pcur");
+    if (c) c.style.transform = `translate(${s.used * CW}px, 0px)`;
+  }
+
+  const KIND_ELM = {
+    io: { type: "Task.andThen : (a -> Task x b) -> Task x a -> Task x b",
+      note: "Task est l'IO d'Elm : une description d'effets que seul le runtime exécute, via Task.perform ou Task.attempt.",
+      pipe: () => ["Task.succeed 3", "    |> Task.andThen attendre", "    |> Task.andThen attendre", "    |> Task.andThen attendre"],
+      def: ["attendre : Int -> Task x Int", "attendre n =", "    Process.sleep 100", "        |> Task.map (\\_ -> n * 2)"],
+      inst: ["-- Task.andThen, dans elm/core : primitif,", "-- le runtime exécute la première tâche", "-- puis donne son résultat à f"], defHl: [2, 3], instHl: [1, 2], finalHl: [1] },
+    parser: { type: "andThen : (a -> Parser b) -> Parser a -> Parser b", off: 0,
+      note: "En pratique, on écrit souvent succeed (+) |= int |. symbol \"+\" |= int : quand les étapes ne dépendent pas les unes des autres, map2 suffit. andThen sert quand la suite dépend de ce qu'on vient de lire.",
+      pipe: () => ["int", "    |> andThen (\\a -> symbol \"+\"", "    |> andThen (\\_ -> int", "    |> andThen (\\b -> succeed (a + b))))"],
+      def: ["-- int : Parser Int", "-- symbol : String -> Parser ()"],
+      inst: ["-- andThen, dans elm/parser", "andThen : (a -> Parser b) -> Parser a -> Parser b"] },
+    list: { type: "List.concatMap : (a -> List b) -> List a -> List b",
+      note: "Si voisins renvoyait [], la branche disparaîtrait. List.concatMap aplatit à chaque étape, pas seulement à la fin.",
+      pipe: () => ["[ 3 ]", "    |> List.concatMap voisins", "    |> List.concatMap voisins"],
+      def: ["voisins : Int -> List Int", "voisins n = [ n - 1, n + 1 ]"],
+      inst: ["-- List.concatMap, dans elm/core", "concatMap f xs = List.concat (List.map f xs)"], defHl: [1], instHl: [1], finalHl: [1] },
+    reader: { type: "andThen : (a -> Reader env b) -> Reader env a -> Reader env b",
+      note: "En Elm, on passe plutôt la configuration en argument. Mais le motif tient en une ligne.",
+      pipe: () => ["always 3", "    |> andThen scale", "    |> andThen scale", "    |> andThen scale"],
+      def: ["scale : Int -> Reader Int Int", "scale x = \\k -> x * k"],
+      inst: ["andThen : (a -> Reader env b) -> Reader env a -> Reader env b", "andThen f m = \\env -> f (m env) env"], defHl: [1], instHl: [1], finalHl: [1] },
+    writer: { type: "andThen : (a -> Writer b) -> Writer a -> Writer b",
+      note: "Un tuple et ++ suffisent : chaque étape peut écrire dans le journal, aucune ne peut le lire.",
+      pipe: () => ["( 8, [] )", "    |> andThen moitie", "    |> andThen moitie", "    |> andThen moitie"],
+      def: ["moitie : Int -> Writer Int", "moitie n =", "    ( n // 2, [ String.fromInt n ++ \"÷2\" ] )"],
+      inst: ["andThen : (a -> Writer b) -> Writer a -> Writer b", "andThen f ( a, log1 ) =", "    f a |> Tuple.mapSecond (\\log2 -> log1 ++ log2)"], defHl: [1, 2], instHl: [1, 2], finalHl: [2] },
+    state: { type: "andThen : (a -> State s b) -> State s a -> State s b",
+      note: "En Elm, l'état vit plutôt dans le Model de The Elm Architecture. Mais le motif tient en quelques lignes.",
+      pipe: () => ["(\\s -> ( 3, s ))", "    |> andThen double", "    |> andThen double", "    |> andThen double"],
+      def: ["double : Int -> State Int Int", "double x = \\s -> ( x * 2, s + 1 )"],
+      inst: ["andThen : (a -> State s b) -> State s a -> State s b", "andThen f m s0 =", "    let", "        ( a, s1 ) = m s0", "    in", "    f a s1"], defHl: [1], instHl: [3, 5], finalHl: [1] }
+  };
+  const KK = () => (lang === "elm" ? KIND_ELM : KIND)[kind];
+
+  const act3 = {
+    get note() {
+      if (lang === "elm") return isRail() ? `Même rail, écrit avec |> : chaque ${RR().op} est un aiguillage. Essaie 6 ou 20 pour voir l'échec.` : KK().note;
+      return isRail() ? "Essaie 6 ou 20 pour voir l'échec au milieu du pipeline, puis bascule en notation do : le rail est le même." : KIND[kind].note;
+    },
+    get code() {
+      if (!isRail()) { const K = KK(); return K.pipe().concat([""], K.def, [""], K.inst); }
+      const R = RR();
+      const arrow = lang === "elm" ? `    |> ${R.op} ` : "  >>= ";
+      const pipe = M() === "bind"
+        ? [R.ok(input), arrow + R.fn, arrow + R.fn, arrow + R.fn]
+        : [`do a <- ${R.fn} ${input}`, `   b <- ${R.fn} a`, `   ${R.fn} b`];
+      return pipe.concat([""], R.inst);
+    },
+    steps: [],
+    prepare() { this.steps = isRail() ? railSteps() : kind === "io" ? ioSteps() : kind === "parser" ? parserSteps() : kind === "list" ? listSteps() : kind === "writer" ? writerSteps() : kind === "reader" ? readerSteps() : stateSteps(); },
+    build() { isRail() ? buildRail() : kind === "io" ? buildIO() : kind === "parser" ? buildParser() : kind === "list" ? buildList() : kind === "writer" ? buildWriter() : kind === "reader" ? buildReader() : buildState(); },
+    render(i, forward) {
+      const s = this.steps[i];
+      if (svg.dataset.scene !== kind) this.build();
+      if (!isRail()) {
+        applyPieces(s, forward);
+        if (kind === "parser") applyParser(s);
+        const K = KK(), pipeLen = K.pipe().length;
+        const off = K.off !== undefined ? K.off : M() === "bind" ? 1 : (K.offDo || 0);
+        const defStart = pipeLen + 1, instStart = defStart + K.def.length + 1;
+        const hl = [];
+        if (s.pipe === -1 && (M() === "bind" || K.offDo)) hl.push(0);
+        if (s.pipe !== null && s.pipe >= 0) hl.push(s.pipe + off);
+        let defs = s.def, insts = s.inst;
+        if (lang === "elm") {
+          if (s.einst) { defs = s.edef; insts = s.einst; }
+          else { defs = s.def.length ? K.defHl : []; insts = s.inst.length ? (s.pipe === null ? K.finalHl : K.instHl) : []; }
+        }
+        defs.forEach((d) => hl.push(defStart + d));
+        insts.forEach((d) => hl.push(instStart + d));
+        return { type: K.type, hl, skip: (s.skip || []).map((j) => j + off), cap: fixCap(s.cap) };
+      }
+      setWagon(s.x, s.y, s.text, s.fail, !forward);
+      stationEls.forEach((g, k) => { g.setAttribute("class", "station " + (s.st[k] || "")); });
+      const off = M() === "bind" ? 1 : 0;
+      const pipeLen = M() === "bind" ? 4 : 3;
+      const hl = [];
+      if (s.line === -1 && M() === "bind") hl.push(0);
+      if (s.line !== null && s.line >= 0) hl.push(s.line + off);
+      const R = RR();
+      if (s.bind === "nothing") hl.push(pipeLen + 1 + R.nIdx);
+      if (s.bind === "just") hl.push(pipeLen + 1 + R.jIdx);
+      return { type: R.type, hl, skip: s.skip.map((j) => j + off), cap: s.cap };
+    }
+  };
+
+  const acts = [act1, act2, act3];
+  let actIdx = 0, step = 0, playing = false, timer = null, playTimer = null;
+
+  function show(forward) {
+    clearTimeout(timer);
+    const a = acts[actIdx];
+    const s = a.render(step, forward);
+    $("typeline").innerHTML = '<span class="k">:: </span>' + esc(s.type).replace(/^\(&gt;&gt;=\) :: /, "(&gt;&gt;=) :: ");
+    if (actIdx === 2) $("typeline").innerHTML = esc(s.type);
+    else $("typeline").innerHTML = '<span class="k">type&nbsp;&nbsp;</span>' + esc(s.type);
+    $("caption").innerHTML = s.cap;
+    setCode(a.code, s.hl, s.skip);
+    $("note").textContent = a.note;
+    $("prev").disabled = step === 0;
+    $("next").disabled = step === a.steps.length - 1;
+    $("dots").innerHTML = a.steps.map((_, i) => '<span class="dot' + (i <= step ? " on" : "") + '"></span>').join("");
+  }
+
+  const TABDESC = [
+    "<code>fmap</code> applique une fonction à l'intérieur de la boîte. Si cette fonction renvoie elle-même une boîte, les couches s'imbriquent.",
+    "<code>join</code> fusionne deux couches du même contexte en une seule. Chaque monade le définit à sa façon.",
+    "<code>&gt;&gt;=</code> fait <code>fmap</code> puis <code>join</code> à chaque étape : on enchaîne les calculs sans jamais imbriquer les couches. C'est l'équivalent générique du <code>andThen</code> d'Elm."
+  ];
+  function setAct(i) {
+    $("tabdesc").innerHTML = TABDESC[i];
+    stop();
+    actIdx = i; step = 0;
+    document.querySelectorAll(".tab").forEach((t) => t.setAttribute("aria-selected", String(+t.dataset.act === i)));
+    $("opts").hidden = i !== 2;
+    $("syn").hidden = i !== 2 || lang === "elm";
+    if (i === 2) { acts[2].prepare(); acts[2].build(); }
+    show(false);
+  }
+
+  function next() {
+    const a = acts[actIdx];
+    if (step < a.steps.length - 1) { step++; show(true); return true; }
+    return false;
+  }
+  function prev() { if (step > 0) { step--; show(false); } }
+
+  function stop() {
+    playing = false; clearInterval(playTimer);
+    $("play").textContent = "▶ Lecture";
+  }
+  function play() {
+    const a = acts[actIdx];
+    if (step === a.steps.length - 1) { step = 0; if (actIdx === 2) acts[2].build(); show(false); }
+    playing = true; $("play").textContent = "❚❚ Pause";
+    playTimer = setInterval(() => { if (!next()) stop(); }, 2200);
+  }
+
+  $("play").addEventListener("click", () => (playing ? stop() : play()));
+  $("next").addEventListener("click", () => { stop(); next(); });
+  $("prev").addEventListener("click", () => { stop(); prev(); });
+  document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => setAct(+t.dataset.act)));
+
+  const BLURB = {
+    maybe: "Enchaîner des calculs qui peuvent échouer, sans tester l'échec à chaque étape.",
+    either: "Comme <code>Maybe</code>, mais l'échec explique pourquoi : on garde le message d'erreur.",
+    list: "Explorer plusieurs résultats possibles à la fois : chaque étape peut en produire zéro, un ou plusieurs. Les <code>voisins</code> d'un nombre sont celui d'avant et celui d'après.",
+    reader: "Partager un environnement en lecture seule (une configuration, par exemple) sans le passer en argument partout.",
+    writer: "Tenir un journal à côté du calcul : chaque étape y ajoute des lignes, que l'on récupère à la fin.",
+    state: "Faire circuler un état modifiable d'étape en étape, sans le passer à la main.",
+    io: "Décrire des effets (lire, afficher, attendre) sous forme de recette, que seul le runtime exécute, dans un ordre garanti.",
+    parser: "Lire un texte morceau par morceau : chaque étape consomme le début de l'entrée, et peut échouer."
+  };
+  function syncSeg() {
+    $("blurb").innerHTML = BLURB[kind];
+    document.querySelectorAll("#inputs button").forEach((b) => b.setAttribute("aria-pressed", String(+b.dataset.v === input)));
+    document.querySelectorAll("#modes button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.m === mode)));
+    document.querySelectorAll("#kinds button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.k === kind)));
+    document.querySelectorAll("#pinputs button").forEach((b) => b.addEventListener("click", () => {
+    pinput = b.dataset.p; syncSeg(); stop(); step = 0; acts[2].prepare(); acts[2].build(); show(false);
+  }));
+  document.querySelectorAll("#langs button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.l === lang)));
+    const badge = lang === "elm"
+      ? (["reader", "writer", "state"].includes(kind) ? "écrit à la main, pas dans elm/core" : kind === "parser" ? "paquet elm/parser" : "")
+      : (kind === "parser" ? "écrit à la main" : "");
+    $("badge").textContent = badge; $("badge").hidden = !badge;
+    $("pinputs").hidden = kind !== "parser";
+    document.querySelectorAll("#pinputs button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.p === pinput)));
+    $("syn").hidden = actIdx !== 2 || lang === "elm";
+    $("inputs").hidden = !isRail();
+    $("inputLab").hidden = !(isRail() || kind === "parser");
+  }
+  document.querySelectorAll("#inputs button").forEach((b) => b.addEventListener("click", () => {
+    input = +b.dataset.v; syncSeg(); stop(); acts[2].prepare(); step = 0; acts[2].build(); show(false);
+  }));
+  document.querySelectorAll("#kinds button").forEach((b) => b.addEventListener("click", () => {
+    kind = b.dataset.k; syncSeg(); stop(); step = 0;
+    if (actIdx === 2) { acts[2].prepare(); acts[2].build(); }
+    show(false);
+  }));
+  document.querySelectorAll("#langs button").forEach((b) => b.addEventListener("click", () => {
+    lang = b.dataset.l; syncSeg(); stop(); step = 0;
+    if (actIdx === 2) { acts[2].prepare(); acts[2].build(); }
+    show(false);
+  }));
+  document.querySelectorAll("#modes button").forEach((b) => b.addEventListener("click", () => {
+    mode = b.dataset.m; syncSeg(); show(false);
+  }));
+
+  syncSeg();
+  setAct(0);
+})();
+</script>
+
+</body>
+</html>
